@@ -18,8 +18,8 @@ The support matrix below summarizes what models & features will be supported ini
 <table>
   <tr>
     <th>Model/feature</th>
-    <th>Initially supported w/ encoder/decoder?</th>
-    <th>Support is a goal?</th>
+    <th>Initially available & compatible when encoder/decoder support lands?</th>
+    <th>Long-term goal?</th>
   </tr>
   <tr>
     <td>Encoder/decoder infrastructure</td>
@@ -98,27 +98,137 @@ The support matrix below summarizes what models & features will be supported ini
   </tr>
 </table>
 
-These three PRs enable encoder/decoder models, with the following caveats
-* XFormers backend only
-* The following vLLM features are **incompatible** with existing encoder/decoder  infrastructure:
-    * Prefix caching
-    * Sliding window
-    * Chunked prefill
-    * LoRA
-    * CUDAGraph
-    * Kernels other than XFormers
-    * Speculative decoding
-    * Pipeline parallelism
-    * Logits soft cap (requires FlashInfer backend)
-    * Multi-modal models
+This RFC discusses the effort to support those **"Long-term goal"** capabilities in the third column of the table above, specifically those which are not supported in the initial encoder/decoder infrastructure PRs.
 
-## Add Whisper model
+## TODOs
 
-## Add support for custom bias
+### Add Whisper model
 
-## Add T5 model
+#### Add support for multi-modality
 
-### Add support for custom bias
+### Add T5 model
 
-## Make CUDAGraph compatible with encoder/decoder models
+#### Add support for custom bias
 
+Not directly encoder/decoder related
+
+### Add other encoder/decoder models
+
+* Variants of aforementioned models (BART, T5, Whisper)
+* CogAgent
+
+### Support kernels other than XFormers with encoder/decoder models
+
+### Support CUDAGraph with encoder/decoder models
+
+### Support pipeline-parallelism with encoder/decoder models
+
+### Low-priority, high-effort tasks
+
+* Speculative decoding
+* Automatic prefix caching
+
+## Overview of initial encoder/decoder infrastructure
+
+### Encoder/decoder request processing pipeline
+
+[This page](https://docs.vllm.ai/en/latest/dev/input_processing/input_processing_pipeline.html#input-processing-pipeline) introduces the vLLM input processing pipeline.
+
+Encoder/decoder models impact the behavior at each pipeline stage.
+
+#### 1. Input data is passed to `LLMEngine` (or `AsyncLLMEngine`)
+
+A single vLLM API call may pass one request or a set of requests to the vLLM engine; vLLM expects a decoder-only model request to have a single input prompt (this is effectively true even for decoder-only multi-modal models.) 
+
+In contrast, there are naturally two submodules (encoder and decoder) in an encoder/decoder model, which can both accept an input prompt. The encoder prompt is typically the "primary" input associated with the model's intended workload or functionality, however the decoder prompt is commonly used to tune model behavior, especially through the use of special tokens. Whisper [^1] accepts preprocessed audio tokens as the encoder input "prompt", yet the model's configuration settings (language, speech recognition task, etc.) are mapped to control tokens in the decoder prompt. 
+
+Thus, it must be possible for an encoder/decoder inference request to specify both encoder and decoder prompts, a feature which was not previously supported by vLLM.
+
+The encoder/decoder infrastructure PRs enable the following encoder/decoder request formats:
+
+* Single encoder prompt
+    * Single encoder prompt string
+
+    ```
+    "The rain in spain falls mainly on the"
+    ```
+
+    * Single encoder `TextPrompt` with prompt string and optional multi-modal inputs
+
+    ```
+    TextPrompt(
+        'prompt': "The rain in spain falls mainly on the",
+        'multi_modal_data': {
+            ...
+        }
+    )
+    ```
+
+    * Single encoder `TokensPrompt` with prompt tokens and optional multi-modal inputs
+
+    ```
+    TokensPrompt(
+        'prompt_tokens': [2,0,171,5,2],
+        'multi_modal_data': {
+            ...
+        }
+    )
+    ```
+
+* Explicit encoder & decoder prompts
+
+    ```
+    ExplicitEncoderDecoderPrompt(
+        'encoder_prompt': <any prompt>,
+        'decoder_prompt': <any prompt without multi-modal>
+    )
+    ```
+
+    For example:
+
+    ```
+    ExplicitEncoderDecoderPrompt(
+        'encoder_prompt': TextPrompt(
+                                'prompt': "The rain in spain falls mainly on the",
+                                'multi_modal_data': {
+                                    ...
+                                }
+                            ),
+        'decoder_prompt': "<BOS>"
+    )
+    ```
+
+    The syntax for passing one or more prompts to `LLMEngine` or `AsyncLLMEngine` is unchanged.
+
+#### 2. Tokenize the data if necessary.
+
+#### 3. Process the inputs
+
+#### 4. Send the processed inputs to ExecutorBase.
+
+#### 5. Distribute the inputs via WorkerBase to ModelRunnerBase.
+
+#### 6. If the data contains multi-modal data, convert it into keyword arguments using MULTIMODAL_REGISTRY.map_input.
+
+### Engine & scheduler modifications
+
+
+#### Prompting an encoder/decoder model
+
+### BART integration
+
+## Implementation guides
+
+### Guide to adding new encoder/decoder models to vLLM
+
+### Guide to adding encoder/decoder support to existing vLLM backends
+
+* Identify impacted AttentionMetadata fields
+* Use of encoder sequence length
+* Correct usage of context
+* Prefill attention masks
+* ModelRunner kernel enforcement
+
+Sources/notes:
+
+[^1]: [Whisper](https://cdn.openai.com/papers/whisper.pdf) is a multi-modal encoder/decoder speech-recognition model.
