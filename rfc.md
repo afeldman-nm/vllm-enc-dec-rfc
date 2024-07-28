@@ -23,58 +23,63 @@ The support matrix below summarizes what models & features will be supported ini
   </tr>
   <tr>
     <td>Encoder/decoder infrastructure</td>
-    <td><strong>Yes</strong></td>
-    <td><strong>Yes</strong></td>
+    <td><strong><u>Yes</u></strong></td>
+    <td><strong><u>Yes</u></strong></td>
   </tr>
   <tr>
     <td>BART</td>
-    <td><strong>Yes</strong></td>
-    <td><strong>Yes</strong></td>
+    <td><strong><u>Yes</u></strong></td>
+    <td><strong><u>Yes</u></strong></td>
   </tr>
   <tr>
     <td>Whisper</td>
     <td>No</td>
-    <td><strong>Yes</strong></td>
+    <td><strong><u>Yes</u></strong></td>
   </tr>
   <tr>
     <td>T5</td>
     <td>No</td>
-    <td><strong>Yes</strong></td>
+    <td><strong><u>Yes</u></strong></td>
   </tr>
   <tr>
     <td>Other enc/dec models</td>
     <td>No</td>
-    <td><strong>Yes</strong></td>
+    <td><strong><u>Yes</u></strong></td>
   </tr>
   <tr>
     <td>Multi-modality</td>
     <td>No</td>
-    <td><strong>Yes</strong></td>
+    <td><strong><u>Yes</u></strong></td>
   </tr>
   <tr>
     <td>Kernels other than Xformers (esp. flash-attn, flashinfer)</td>
     <td>No</td>
-    <td><strong>Yes</strong></td>
+    <td><strong><u>Yes</u></strong></td>
   </tr>
   <tr>
     <td>Custom bias support</td>
     <td>No</td>
-    <td><strong>Yes</strong></td>
+    <td><strong><u>Yes</u></strong></td>
   </tr>
   <tr>
     <td>CUDAGraph</td>
     <td>No</td>
-    <td><strong>Yes</strong></td>
+    <td><strong><u>Yes</u></strong></td>
   </tr>
   <tr>
     <td>Pipeline parallelism</td>
     <td>No</td>
-    <td><strong>Yes</strong></td>
+    <td><strong><u>Yes</u></strong></td>
   </tr>
   <tr>
-    <td>Prefix caching</td>
+    <td>Speculative decoding</td>
     <td>No</td>
+    <td><strong>Low-priority but nice-to-have; difficult.</strong></td>
+  </tr>
+  <tr>
+    <td>Automatic prefix caching</td>
     <td>No</td>
+    <td><strong>Low-priority; difficult.</strong></td>
   </tr>
   <tr>
     <td>Sliding window</td>
@@ -88,11 +93,6 @@ The support matrix below summarizes what models & features will be supported ini
   </tr>
   <tr>
     <td>LoRA</td>
-    <td>No</td>
-    <td>No</td>
-  </tr>
-  <tr>
-    <td>Speculative decoding</td>
     <td>No</td>
     <td>No</td>
   </tr>
