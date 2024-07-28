@@ -17,84 +17,84 @@ The support matrix below summarizes what models & features will be supported ini
 
 <table>
   <tr>
-    <th style="background-color: #000000; color: #FFFFFF;">Model/feature</th>
-    <th style="background-color: #000000; color: #FFFFFF;">Initially supported w/ encoder/decoder?</th>
-    <th style="background-color: #000000; color: #FFFFFF;">Support is a goal?</th>
+    <th>Model/feature</th>
+    <th>Initially supported w/ encoder/decoder?</th>
+    <th>Support is a goal?</th>
   </tr>
   <tr>
-    <td style="background-color: #D3D3D3; color: #000000;">Encoder/decoder infrastructure</td>
-    <td style="background-color: #00FF00; color: #000000;">Yes</td>
-    <td style="background-color: #00FF00; color: #000000;">Yes</td>
+    <td>Encoder/decoder infrastructure</td>
+    <td><strong>Yes</strong></td>
+    <td><strong>Yes</strong></td>
   </tr>
   <tr>
-    <td style="background-color: #D3D3D3; color: #000000;">BART</td>
-    <td style="background-color: #00FF00; color: #000000;">Yes</td>
-    <td style="background-color: #00FF00; color: #000000;">Yes</td>
+    <td>BART</td>
+    <td><strong>Yes</strong></td>
+    <td><strong>Yes</strong></td>
   </tr>
   <tr>
-    <td style="background-color: #D3D3D3; color: #000000;">Whisper</td>
-    <td style="background-color: #FF0000; color: #000000;">No</td>
-    <td style="background-color: #00FF00; color: #000000;">Yes</td>
+    <td>Whisper</td>
+    <td>No</td>
+    <td><strong>Yes</strong></td>
   </tr>
   <tr>
-    <td style="background-color: #D3D3D3; color: #000000;">T5</td>
-    <td style="background-color: #FF0000; color: #000000;">No</td>
-    <td style="background-color: #00FF00; color: #000000;">Yes</td>
+    <td>T5</td>
+    <td>No</td>
+    <td><strong>Yes</strong></td>
   </tr>
   <tr>
-    <td style="background-color: #D3D3D3; color: #000000;">Other enc/dec models</td>
-    <td style="background-color: #FF0000; color: #000000;">No</td>
-    <td style="background-color: #00FF00; color: #000000;">Yes</td>
+    <td>Other enc/dec models</td>
+    <td>No</td>
+    <td><strong>Yes</strong></td>
   </tr>
   <tr>
-    <td style="background-color: #D3D3D3; color: #000000;">Multi-modality</td>
-    <td style="background-color: #FF0000; color: #000000;">No</td>
-    <td style="background-color: #00FF00; color: #000000;">Yes</td>
+    <td>Multi-modality</td>
+    <td>No</td>
+    <td><strong>Yes</strong></td>
   </tr>
   <tr>
-    <td style="background-color: #D3D3D3; color: #000000;">Kernels other than Xformers (esp. flash-attn, flashinfer)</td>
-    <td style="background-color: #FF0000; color: #000000;">No</td>
-    <td style="background-color: #00FF00; color: #000000;">Yes</td>
+    <td>Kernels other than Xformers (esp. flash-attn, flashinfer)</td>
+    <td>No</td>
+    <td><strong>Yes</strong></td>
   </tr>
   <tr>
-    <td style="background-color: #D3D3D3; color: #000000;">Custom bias support</td>
-    <td style="background-color: #FF0000; color: #000000;">No</td>
-    <td style="background-color: #00FF00; color: #000000;">Yes</td>
+    <td>Custom bias support</td>
+    <td>No</td>
+    <td><strong>Yes</strong></td>
   </tr>
   <tr>
-    <td style="background-color: #D3D3D3; color: #000000;">CUDAGraph</td>
-    <td style="background-color: #FF0000; color: #000000;">No</td>
-    <td style="background-color: #00FF00; color: #000000;">Yes</td>
+    <td>CUDAGraph</td>
+    <td>No</td>
+    <td><strong>Yes</strong></td>
   </tr>
   <tr>
-    <td style="background-color: #D3D3D3; color: #000000;">Pipeline parallelism</td>
-    <td style="background-color: #FF0000; color: #000000;">No</td>
-    <td style="background-color: #00FF00; color: #000000;">Yes</td>
+    <td>Pipeline parallelism</td>
+    <td>No</td>
+    <td><strong>Yes</strong></td>
   </tr>
   <tr>
-    <td style="background-color: #D3D3D3; color: #000000;">Prefix caching</td>
-    <td style="background-color: #FF0000; color: #000000;">No</td>
-    <td style="background-color: #FF0000; color: #000000;">No</td>
+    <td>Prefix caching</td>
+    <td>No</td>
+    <td>No</td>
   </tr>
   <tr>
-    <td style="background-color: #D3D3D3; color: #000000;">Sliding window</td>
-    <td style="background-color: #FF0000; color: #000000;">No</td>
-    <td style="background-color: #FF0000; color: #000000;">No</td>
+    <td>Sliding window</td>
+    <td>No</td>
+    <td>No</td>
   </tr>
   <tr>
-    <td style="background-color: #D3D3D3; color: #000000;">Chunked prefill</td>
-    <td style="background-color: #FF0000; color: #000000;">No</td>
-    <td style="background-color: #FF0000; color: #000000;">No</td>
+    <td>Chunked prefill</td>
+    <td>No</td>
+    <td>No</td>
   </tr>
   <tr>
-    <td style="background-color: #D3D3D3; color: #000000;">LoRA</td>
-    <td style="background-color: #FF0000; color: #000000;">No</td>
-    <td style="background-color: #FF0000; color: #000000;">No</td>
+    <td>LoRA</td>
+    <td>No</td>
+    <td>No</td>
   </tr>
   <tr>
-    <td style="background-color: #D3D3D3; color: #000000;">Speculative decoding</td>
-    <td style="background-color: #FF0000; color: #000000;">No</td>
-    <td style="background-color: #FF0000; color: #000000;">No</td>
+    <td>Speculative decoding</td>
+    <td>No</td>
+    <td>No</td>
   </tr>
 </table>
 
