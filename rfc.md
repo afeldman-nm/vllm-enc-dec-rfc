@@ -140,13 +140,20 @@ Encoder/decoder models impact the behavior at each pipeline stage.
 
 A single vLLM API call may pass one request or a set of requests to the vLLM engine; vLLM expects a decoder-only model request to have a single input prompt (this is effectively true even for decoder-only multi-modal models.) 
 
-In contrast, there are naturally two submodules (encoder and decoder) in an encoder/decoder model, which can both accept an input prompt. The encoder prompt is typically the "primary" input associated with the model's intended workload or functionality, however the decoder prompt is commonly used to tune model behavior, especially through the use of special tokens. Whisper [^1] accepts preprocessed audio tokens as the encoder input "prompt", yet the model's configuration settings (language, speech recognition task, etc.) are mapped to control tokens in the decoder prompt. 
+In contrast, there are naturally two submodules (encoder and decoder) in an encoder/decoder model, which can both accept an input prompt. The encoder prompt is typically the "primary" input associated with the model's intended workload or functionality, however the decoder prompt is commonly used to tune model behavior, especially through the use of special tokens. Whisper [^1] accepts preprocessed audio embeddings as the encoder input "prompt", yet the model's configuration settings (language, speech-recognition task, etc.) are mapped to control tokens in the decoder prompt. 
 
 Thus, it must be possible for an encoder/decoder inference request to specify both encoder and decoder prompts, a feature which was not previously supported by vLLM.
+
+##### Multimodal inputs
+
+##### Supported encoder/decoder prompt formats
 
 The encoder/decoder infrastructure PRs enable the following encoder/decoder request formats:
 
 * Single encoder prompt
+
+    The decoder prompt is implicitly `None`.
+
     * Single encoder prompt string
 
     ```
@@ -202,7 +209,14 @@ The encoder/decoder infrastructure PRs enable the following encoder/decoder requ
 
 #### 2. Tokenize the data if necessary.
 
+Both the encoder and the decoder prompts are tokenized, unless token ids are provided directly.
+
 #### 3. Process the inputs
+
+Apply special processing to the decoder prompt:
+* If decoder prompt is `None`, replace with default "empty" decoder prompt.
+* Append decoder start token at the beginning of the tokenized decoder prompt, unless
+  it is already present.
 
 #### 4. Send the processed inputs to ExecutorBase.
 
