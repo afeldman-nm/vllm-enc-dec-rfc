@@ -1,10 +1,10 @@
 # [RFC] Encoder/decoder models & feature compatibility
 
-tl;dr With Encoder/decoder model support landing soon, the next steps are to (1) add frequently-asked-for models (T5, Whisper) and (2) make vLLM features (CUDAGraph, pipeline parallelism, all attn backends, ...) compatible with encoder/decoder
+tl;dr With Encoder/decoder model support landing soon, the next steps are to (1) add frequently-asked-for models (T5, Whisper, ...) and (2) increase the number of vLLM features (quantization, CUDAGraph, pipeline parallelism, all attn backends, ...) compatible with encoder/decoder
 
 ## Motivation
 
-The level of interest in encoder/decoder models has resulted in a number of Issues submitted to the vLLM github repo, for example [here](https://github.com/vllm-project/vllm/issues/187) and [here](https://github.com/vllm-project/vllm/issues/180). As a result encoder/decoder support is being introduced to vLLM, requiring modifications to the backends, core & engine which were introduced over three PRs:
+The level of interest in encoder/decoder models has resulted in a number of Issues submitted to the vLLM github repo, for example [here](https://github.com/vllm-project/vllm/issues/187) and [here](https://github.com/vllm-project/vllm/issues/180). As a result encoder/decoder support is being introduced to vLLM over three PRs which are expected to land soon:
 
 * [Core] block manager support for cross-attention KV cache
 * [Kernel] backend support for encoder attention & cross-attention
@@ -44,6 +44,11 @@ The support matrix below summarizes what models & features will be supported ini
   <tr>
     <td>Other enc/dec models</td>
     <td>No</td>
+    <td><strong><u>Yes</u></strong></td>
+  </tr>
+  <tr>
+    <td>Quantization</td>
+    <td><strong><u>Untested</u></strong></td>
     <td><strong><u>Yes</u></strong></td>
   </tr>
   <tr>
@@ -98,9 +103,19 @@ The support matrix below summarizes what models & features will be supported ini
   </tr>
 </table>
 
-This RFC discusses the effort to support those **"Long-term goal"** capabilities in the third column of the table above, specifically those which are not supported in the initial encoder/decoder infrastructure PRs.
+This RFC discusses the effort to support those **"Long-term goal"** capabilities in the third column of the table above, specifically those which are not supported or fully-tested in the initial encoder/decoder infrastructure PRs.
 
-## TODOs
+## Background
+
+Before continuing, it will be helpful to review [the details of the new vLLM encoder/decoder infrastructure](infra-enc-dec.md). 
+
+It will also be helpful to review [this how-to guide](how-to.md) for adding new encoder/decoder models & improving encoder/decoder feature compatibility.
+
+## Proposed changes
+
+### Add new models to vLLM
+
+Please review the [how-to guide for adding new models to vLLM](how-to.md#guide-to-adding-new-encoderdecoder-models-to-vllm)
 
 ### Add Whisper model
 
@@ -127,3 +142,15 @@ Not directly encoder/decoder related
 
 * Speculative decoding
 * Automatic prefix caching
+
+## Initial goal
+
+## Follow-ups
+
+## Feedback period
+
+## CC list
+
+## Any other things
+
+*No response*

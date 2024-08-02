@@ -9,7 +9,3 @@
 * Correct usage of context
 * Prefill attention masks
 * ModelRunner kernel enforcement
-
-Sources/notes:
-
-[^1]: [Whisper](https://cdn.openai.com/papers/whisper.pdf) is a multi-modal encoder/decoder speech-recognition model.

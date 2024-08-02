@@ -100,3 +100,7 @@ Apply special processing to the decoder prompt:
 ### Prompting an encoder/decoder model
 
 ## BART integration
+
+Sources/notes:
+
+[^1]: [Whisper](https://cdn.openai.com/papers/whisper.pdf) is a multi-modal encoder/decoder speech-recognition model.
