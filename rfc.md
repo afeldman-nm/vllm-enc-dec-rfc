@@ -121,7 +121,7 @@ Please review the [how-to guide for adding new models to vLLM](how-to.md#guide-t
 
 #### Add Whisper model & multi-modality
 
-
+Whisper [^1] [^2]
 
 #### Add T5 model & custom bias
 
@@ -156,4 +156,5 @@ Not directly encoder/decoder related
 Sources/notes:
 
 [^1]: [Whisper paper](https://cdn.openai.com/papers/whisper.pdf)
+
 [^2]: [`modeling_whisper` on huggingface](https://github.com/huggingface/transformers/blob/main/src/transformers/models/whisper/modeling_whisper.py)
