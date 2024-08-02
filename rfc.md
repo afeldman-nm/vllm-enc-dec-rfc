@@ -13,6 +13,8 @@ The level of interest in encoder/decoder models has resulted in a number of Issu
 
 These three PRs make encoder/decoder model inference possible, but leave more to be desired in terms of feature compatibility with encoder/decoder & the number of encoder/decoder models which are supported.
 
+## Proposed changes
+
 The support matrix below summarizes what models & features will be supported initially, versus what are the long-term goals:
 
 <table>
@@ -111,23 +113,23 @@ Before continuing, it will be helpful to review [the details of the new vLLM enc
 
 It will also be helpful to review [this how-to guide](how-to.md) for adding new encoder/decoder models & improving encoder/decoder feature compatibility.
 
-## Proposed changes
+## Detailed goals
 
 ### Add new models to vLLM
 
 Please review the [how-to guide for adding new models to vLLM](how-to.md#guide-to-adding-new-encoderdecoder-models-to-vllm)
 
-### Add Whisper model
+#### Add Whisper model & multi-modality
 
-#### Add support for multi-modality
 
-### Add T5 model
+
+#### Add T5 model & custom bias
 
 #### Add support for custom bias
 
 Not directly encoder/decoder related
 
-### Add other encoder/decoder models
+#### Add support for other encoder/decoder models
 
 * Variants of aforementioned models (BART, T5, Whisper)
 * CogAgent
@@ -143,10 +145,6 @@ Not directly encoder/decoder related
 * Speculative decoding
 * Automatic prefix caching
 
-## Initial goal
-
-## Follow-ups
-
 ## Feedback period
 
 ## CC list
@@ -154,3 +152,8 @@ Not directly encoder/decoder related
 ## Any other things
 
 *No response*
+
+Sources/notes:
+
+[^1]: [Whisper paper](https://cdn.openai.com/papers/whisper.pdf)
+[^2]: [`modeling_whisper` on huggingface](https://github.com/huggingface/transformers/blob/main/src/transformers/models/whisper/modeling_whisper.py)
