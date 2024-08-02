@@ -66,7 +66,7 @@ The support matrix below summarizes what models & features will be supported ini
     <td><strong><u>Yes</u></strong></td>
   </tr>
   <tr>
-    <td>Custom bias support</td>
+    <td>custom attention bias support</td>
     <td>No</td>
     <td><strong><u>Yes</u></strong></td>
   </tr>
@@ -137,14 +137,13 @@ Add support for Whisper [^1], a multi-modal encoder/decoder speech recognition m
 
 Proposal: it makes sense to implement encoder/decoder multimodality, audio support, and Whisper in the same PR; that way, the Whisper model may be used to facilitate an end-to-end test with the other two features. 
 
-#### Add T5 model & custom bias
+#### Add T5 model
+
+Note: T5 depends on [custom attention bias being supported](#support-custom-attention-bias) by at least one of the attention backends which [also supports encoder attention & cross-attention](#add-support-for-encoder-attention-and-cross-attention-to-additional-kernels); at time of writing this is not the case. Custom attention bias is required in order to support relative positional encoding.
 
 Add support for the T5 model [^4].
-* [Add custom bias support to at least one vLLM backend, for both prefill and decode kernels](#support-custom-attention-bias)
 * Port HuggingFace T5 model [^5] to vLLM
 * Add a T5 test to `tests/models/`
-
-Proposal: it makes sense to implement custom bias and T5 in the same PR; that way, the T5 model may be used to facilitate an end-to-end test with custom bias.
 
 #### Add other encoder/decoder models
 
@@ -174,9 +173,25 @@ $$
 
 T5 employs custom attention bias in order to implement relative positional encoding [^8], wherein pairwise positional relationships between tokens are represented by the bias matrix. The HuggingFace Transformers T5 implementation provides an example of how the relative positional encoding matrix is computed [^9].
 
+**Currently, no vLLM attention backend fully supports custom attention bias**. This is because most attention kernels employed by vLLM allow attention bias to be specified only in an indirect or "compressed" manner, i.e. through the use of a `causal=True/False` flag (causal attention mask being a type of attention bias.) The xFormers `memory_efficient_attention_forward` kernel[^7] is the exception, in that it permits an arbitrary pytorch tensor to be passed in via the `attn_bias` argument. However vLLM only employs this kernel for prefill; none of the decode-phase kernels employed by vLLM can accept an arbitrary pytorch tensor as a custom attention bias, making custom attention bias impossible to apply end-to-end for both prefill and decode. 
+
+An overview of how attention bias is currently handled by a subset of vLLM backends:
+
+* Prefill
+  * xFormers backend: `BlockDiagonalMask` and `BlockDiagonalCausalMask` are used as compressed representations of non-causal and causal attention masks, respectively [^11]
+  * Flash-attention backend: the `causal` flag controls whether a non-causal or causal attention bias is employed [^10]
+  * Flashinfer backend: similar usage of a `causal` flag [^12]
+* Decode
+  * Autoregressive decoding is inherently causal. So the xFormers backend (which employs the PagedAttention kernel for decode) [^13] and FlashInfer [^14] simplify by omitting the `causal` flag entirely, since there is no support for a more general attention bias beyond causal or non-causal masking.
+  * Flash-attention backend uses the `causal=True` setting
+
+Additionally, the vLLM `Attention` wrapper does not currently expose a custom attention bias argument which would allow arbitrary pytorch tensors to pass into the attention kernel.
+
+Note: [T5](#add-t5-model) takes a dependency on custom attention bias. Custom attention bias is likely complex enough to merit its own PR.
 
 
-### Support kernels other than XFormers with encoder/decoder models
+
+### Add support for encoder attention and cross-attention to additional kernels
 
 ### Support CUDAGraph with encoder/decoder models
 
@@ -207,10 +222,20 @@ Sources/notes:
 
 [^5]: [`modeling_t5` on HuggingFace](https://github.com/huggingface/transformers/blob/main/src/transformers/models/t5/modeling_t5.py)
 
-[^6]: [Open PR which added T5 model & paged-attn custom bias](https://github.com/vllm-project/vllm/pull/3117)
+[^6]: [Open PR which added T5 model & paged-attn custom attention bias](https://github.com/vllm-project/vllm/pull/3117)
 
-[^7]: [xFormers optimized operators](https://facebookresearch.github.io/xformers/components/ops.html); Ctrl-F for "attn_bias"
+[^7]: [xFormers optimized operators](https://facebookresearch.github.io/xformers/components/ops.html)
 
 [^8]: [Relative attention bias (relative positional encoding)](https://jaketae.github.io/study/relative-positional-encoding/#bridging-shaw-and-huang) in the sense of Huang, et. al.
 
 [^9]: [Relative positional encoding implemented for T5 on HuggingFace transformers](https://github.com/huggingface/transformers/blob/c1aa0edb48217f416f4bbe6e3a9db1500284513b/src/transformers/models/t5/modeling_t5.py#L428)
+
+[^10]: [Invocation of flash-attention for prefill in vLLM backend, using `causal` flag](https://github.com/vllm-project/vllm/blob/db35186391a2abfc6c91d703527dac20d2488107/vllm/attention/backends/flash_attn.py#L522)
+
+[^11]: [Invocation of xFormers attention kernel for prefill in vLLM backend, using `BlockDiagonalMask` and `BlockDiagonalCausalMask`](https://github.com/vllm-project/vllm/blob/db35186391a2abfc6c91d703527dac20d2488107/vllm/attention/backends/xformers.py#L689-L738)
+
+[^12]: [Invocation of FlashInfer attention kernel for prefill in backend, using `causal` flag](https://github.com/vllm-project/vllm/blob/db35186391a2abfc6c91d703527dac20d2488107/vllm/attention/backends/flashinfer.py#L539)
+
+[^13]: [Invocation of PagedAttention kernel for decode in vLLM backend](https://github.com/vllm-project/vllm/blob/db35186391a2abfc6c91d703527dac20d2488107/vllm/attention/backends/xformers.py#L628)
+
+[^14]: [Invocation of FlashInfer kernel for decode in vLLM backend](https://github.com/vllm-project/vllm/blob/db35186391a2abfc6c91d703527dac20d2488107/vllm/attention/backends/flashinfer.py#L543)
