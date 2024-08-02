@@ -140,7 +140,7 @@ Proposal: it makes sense to implement encoder/decoder multimodality, audio suppo
 #### Add T5 model & custom bias
 
 Add support for the T5 model [^4].
-* [Add custom bias support to at least one vLLM backend, for both prefill and decode kernels](#support-custom-bias)
+* [Add custom bias support to at least one vLLM backend, for both prefill and decode kernels](#support-custom-attention-bias)
 * Port HuggingFace T5 model [^5] to vLLM
 * Add a T5 test to `tests/models/`
 
@@ -162,9 +162,19 @@ Proposal: it makes sense to implement encoder/decoder multimodality in the same 
 
 ### Support custom attention bias
 
-Add custom attention bias support to vLLM kernels. This is not directly related to encoder/decoder functionality, however custom attention bias support is required by T5 which is a frequently-requested model for vLLM to support.
+Add custom attention bias support to vLLM kernels. 
 
-A 
+This is not directly related to encoder/decoder functionality, however custom attention bias support is required by T5 [^4] which is a frequently-requested model.
+
+Custom attention bias means refers to adding an arbitrary matrix $A$ to the scaled dot-product attention scores before performing softmax, as shown below:
+
+$$
+attn(Q,K,V,A) = softmax(\frac{Q K^T + A}{\sqrt{d}})V
+$$
+
+T5 employs custom attention bias in order to implement relative positional encoding [^8], wherein pairwise positional relationships between tokens are represented by the bias matrix. The HuggingFace Transformers T5 implementation provides an example of how the relative positional encoding matrix is computed [^9].
+
+
 
 ### Support kernels other than XFormers with encoder/decoder models
 
@@ -200,3 +210,7 @@ Sources/notes:
 [^6]: [Open PR which added T5 model & paged-attn custom bias](https://github.com/vllm-project/vllm/pull/3117)
 
 [^7]: [xFormers optimized operators](https://facebookresearch.github.io/xformers/components/ops.html); Ctrl-F for "attn_bias"
+
+[^8]: [Relative attention bias (relative positional encoding)](https://jaketae.github.io/study/relative-positional-encoding/#bridging-shaw-and-huang) in the sense of Huang, et. al.
+
+[^9]: [Relative positional encoding implemented for T5 on HuggingFace transformers](https://github.com/huggingface/transformers/blob/c1aa0edb48217f416f4bbe6e3a9db1500284513b/src/transformers/models/t5/modeling_t5.py#L428)
