@@ -139,7 +139,7 @@ Proposal: it makes sense to implement encoder/decoder multimodality, audio suppo
 
 #### Add T5 model
 
-Note: T5 depends on [custom attention bias being supported](#support-custom-attention-bias) by at least one of the attention backends which [also supports encoder attention & cross-attention](#add-support-for-encoder-attention-and-cross-attention-to-additional-kernels); at time of writing this is not the case. Custom attention bias is required in order to support relative positional encoding.
+Note: T5 depends on [custom attention bias being supported](#support-custom-attention-bias) by at least one of the attention backends which [also supports encoder attention & cross-attention](#add-support-for-encoder-attention-and-cross-attention-to-additional-kernels); at time of writing this is not the case. Custom attention bias is required in order to support T5 [relative positional encoding.](#custom-attention-bias-and-relative-positional-encoding)
 
 Add support for the T5 model [^4].
 * Port HuggingFace T5 model [^5] to vLLM
@@ -165,6 +165,8 @@ Add custom attention bias support to vLLM kernels.
 
 This is not directly related to encoder/decoder functionality, however custom attention bias support is required by T5 [^4] which is a frequently-requested model.
 
+#### Custom attention bias and relative positional encoding
+
 Custom attention bias means refers to adding an arbitrary matrix $A$ to the scaled dot-product attention scores before performing softmax, as shown below:
 
 $$
@@ -172,6 +174,8 @@ attn(Q,K,V,A) = softmax(\frac{Q K^T + A}{\sqrt{d}})V
 $$
 
 T5 employs custom attention bias in order to implement relative positional encoding [^8], wherein pairwise positional relationships between tokens are represented by the bias matrix. The HuggingFace Transformers T5 implementation provides an example of how the relative positional encoding matrix is computed [^9].
+
+#### Existing attention bias support
 
 **Currently, no vLLM attention backend fully supports custom attention bias**. This is because most attention kernels employed by vLLM allow attention bias to be specified only in an indirect or "compressed" manner, i.e. through the use of a `causal=True/False` flag (causal attention mask being a type of attention bias.) The xFormers `memory_efficient_attention_forward` kernel[^7] is the exception, in that it permits an arbitrary pytorch tensor to be passed in via the `attn_bias` argument. However vLLM only employs this kernel for prefill; none of the decode-phase kernels employed by vLLM can accept an arbitrary pytorch tensor as a custom attention bias, making custom attention bias impossible to apply end-to-end for both prefill and decode. 
 
@@ -186,6 +190,8 @@ An overview of how attention bias is currently handled by a subset of vLLM backe
   * Flash-attention backend uses the `causal=True` setting
 
 Additionally, the vLLM `Attention` wrapper does not currently expose a custom attention bias argument which would allow arbitrary pytorch tensors to pass into the attention kernel.
+
+#### Adding custom attention bias support
 
 Note: [T5](#add-t5-model) takes a dependency on custom attention bias. Custom attention bias is likely complex enough to merit its own PR.
 
