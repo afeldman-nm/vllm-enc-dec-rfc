@@ -170,7 +170,7 @@ Custom attention bias is not directly related to encoder/decoder functionality, 
 
 #### Custom attention bias and relative positional encoding
 
-Attention bias refers to adding an matrix $A$ to the scaled dot-product (SDP) attention scores matrix before performing softmax, as shown below:
+Attention bias refers to adding a matrix $A$ to the scaled dot-product (SDP) attention scores matrix before performing softmax, as shown below:
 
 $$
 attn(Q,K,V,A) = softmax(\frac{Q K^T + A}{\sqrt{d}})V
@@ -184,7 +184,7 @@ T5 employs custom attention bias in order to implement relative positional encod
 
 *Currently, no vLLM attention backend fully supports custom attention bias*. This is because most attention kernels employed by vLLM allow attention bias to be specified only in an indirect or "compressed" manner, i.e. through the use of a `causal=True/False` flag (causal attention mask being a type of attention bias.) The xFormers `memory_efficient_attention_forward` kernel[^7] is the exception, in that it permits an arbitrary pytorch tensor to be passed in via the `attn_bias` argument. However vLLM only employs this kernel for prefill; none of the decode-phase kernels employed by vLLM can accept an arbitrary pytorch tensor as a custom attention bias, making custom attention bias impossible to apply end-to-end for both prefill and decode under the current vLLM implementation.
 
-In addition to lack of kernel-level support for custom attention bias, most vLLM backends also prevent passing a custom attention bias tensor to the underlying kernel. The exception is the XFormers backend, which accepts an attention bias via `XFormersMetadata.attn_bias` attribute.
+In addition to lack of kernel-level support for custom attention bias, most vLLM backends also prevent passing a custom attention bias matrix to the underlying kernel. The exception is the XFormers backend, which accepts an attention bias via `XFormersMetadata.attn_bias` attribute.
 
 #### Initial goals for introducing custom attention bias support
 
