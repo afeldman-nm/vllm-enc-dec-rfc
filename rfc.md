@@ -166,7 +166,7 @@ Proposal: it makes sense to implement encoder/decoder multimodality in the same 
 
 Note: [T5](#add-t5-model) takes a dependency on custom attention bias. Custom attention bias is likely complex enough to merit its own PR.
 
-Custom attention bias is not directly related to encoder/decoder functionality, however custom attention bias support is required by T5 [^4] which is a frequently-requested encoder/decoder model.
+Custom attention bias is not directly related to encoder/decoder functionality, however custom attention bias support is required by [T5 which is a frequently-requested encoder/decoder model](#add-t5-model).
 
 #### Custom attention bias and relative positional encoding
 
