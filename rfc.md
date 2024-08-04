@@ -189,7 +189,7 @@ In addition to lack of kernel-level support for custom attention bias, most vLLM
 #### Initial goals for introducing custom attention bias support
 
 1. Focus on a particular vLLM attention backend
-  * Suggestion: focus on an attention backend which also supports encoder/decoder models, in order to facilitate [running T5](#add-t5-model)
+  * Suggestion: focus on an attention backend which also supports encoder/decoder models, in order to facilitate [running T5](#add-t5-model). At time of writing, XFormers is the only backend which supports encoder/decoder models, however there will likely be work on [supporting encoder/decoder in additional attention backends.](#add-support-for-encoder-attention-and-cross-attention-to-additional-kernels)
 2. Scope out the effort involved in introducing custom attention bias support to this backend
 3. Some steps which will likely be involved in introducing custom attention bias support:
   * Augment attention backend's kernels to accept custom attention bias; for example, the PagedAttention kernel (for XFormers backend), the Flash-attention kernel (for the flash-attn backend), or the Flashinfer kernels (for the Flashinfer backend)
