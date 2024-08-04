@@ -4,26 +4,25 @@ tl;dr With Encoder/decoder model support landing soon, the next steps are to (1)
 
 ## Motivation
 
-The level of interest in encoder/decoder models has resulted in a number of Issues submitted to the vLLM github repo, for example [here](https://github.com/vllm-project/vllm/issues/187) and [here](https://github.com/vllm-project/vllm/issues/180). As a result encoder/decoder support is being introduced to vLLM over three PRs which are expected to land soon:
+There is significant interest in vLLM supporting encoder/decoder models. [Issues 187](https://github.com/vllm-project/vllm/issues/187) and [180](https://github.com/vllm-project/vllm/issues/180), for example, request encoder/decoder model support. As a result encoder/decoder support will be introduce to vLLM via the following three PRs:
 
-* [Core] block manager support for cross-attention KV cache
-* [Kernel] backend support for encoder attention & cross-attention
-* [Core] scheduler & engine support for encoder/decoder requests
-    * Add BART model
+* **(Merged)** [[Core] Cross-attention KV caching and memory-management](https://github.com/vllm-project/vllm/pull/4837)
+* **(Merged)** [[Kernel] Correctly invoke prefill & decode kernels for cross-attention](https://github.com/vllm-project/vllm/pull/4888)
+* **(Landing soon)** [[Core] Subclass ModelRunner to support cross-attention & encoder sequences](https://github.com/vllm-project/vllm/pull/4942)
 
 These three PRs make encoder/decoder model inference possible, but leave more to be desired in terms of feature compatibility with encoder/decoder & the number of encoder/decoder models which are supported.
 
-The ask is for the vLLM contributor community to help bring vLLM encoder/decoder support to a similar level of maturity as decoder-only, by contributing PRs which fill gaps in vLLM model and feature support.
+The ask for the vLLM contributor community is to help bring vLLM encoder/decoder model support to a similar level of maturity as that of decoder-only models, by contributing PRs which fill gaps in vLLM encoder/decoder model and feature support.
 
 ## Proposed changes
 
-The support matrix below summarizes what models & features will be supported initially, versus what are the long-term goals:
+The support matrix below summarizes which features & encoder/decoder models will be supported initially (by the three PRs mentioned above), versus which features & models will require community support to implement in the long term:
 
 <table>
   <tr>
     <th>Model/feature</th>
-    <th>Initially available & compatible when encoder/decoder support lands?</th>
-    <th>Long-term goal?</th>
+    <th>Initially supported with encoder/decoder models?</th>
+    <th>Is supporting this feature a long-term goal?</th>
   </tr>
   <tr>
     <td>Encoder/decoder infrastructure</td>
@@ -107,7 +106,7 @@ The support matrix below summarizes what models & features will be supported ini
   </tr>
 </table>
 
-This RFC discusses the effort to support those **"Long-term goal"** capabilities in the third column of the table above, specifically those which are not supported or fully-tested in the initial encoder/decoder infrastructure PRs.
+This RFC gives an overview of those features & models which **will not be compatible with encoder/decoder initially, but which should be made compatible eventually** (i.e. **No** in the 2nd column, **Yes** in the third column in the support matrix.)
 
 ## Background
 
@@ -129,20 +128,24 @@ See `tests/models/test_bart.py` for an example of an encoder/decoder model unit 
 
 #### Add Whisper model & multi-modality
 
-Add support for Whisper [^1], a multi-modal encoder/decoder speech recognition model.
+Steps to add support for Whisper [^1], a multi-modal encoder/decoder speech recognition model.
 * [Extend existing vLLM multimodality support to encoder/decoder models](#support-encoderdecoder-multimodality)
 * Extend existing vLLM prompt processing pipline to support audio
 * Port HuggingFace Whisper model [^2] to vLLM; an existing open PR for this workstream can be found here [^3]
+* Modify each Whisper layer, where appropriate, to support TP > 1
 * Add a Whisper test under `tests/models/`
 
-Proposal: it makes sense to implement encoder/decoder multimodality, audio support, and Whisper in the same PR; that way, the Whisper model may be used to facilitate an end-to-end test with the other two features. 
+Proposal: it makes sense to implement encoder/decoder multimodality, audio support, and Whisper in the same PR; that way, the Whisper model may be used to facilitate an end-to-end test with of audio multimodality.
 
 #### Add T5 model
 
-Note: T5 depends on [custom attention bias being supported](#support-custom-attention-bias) by at least one of the attention backends which [also supports encoder attention & cross-attention](#add-support-for-encoder-attention-and-cross-attention-to-additional-kernels); at time of writing this is not the case. Custom attention bias is required in order to support T5 [relative positional encoding.](#custom-attention-bias-and-relative-positional-encoding)
+Note: T5 depends on [custom attention bias being supported](#support-custom-attention-bias) by at least one of the attention backends which [also supports encoder attention & cross-attention](#add-support-for-encoder-attention-and-cross-attention-to-additional-kernels); at time of writing this is not the case, since XFormers backend supports encoder/decoder models but no backend supports custom attention bias. (Custom attention bias is required in order to support T5 [relative positional encoding.](#custom-attention-bias-and-relative-positional-encoding))
 
-Add support for the T5 model [^4].
+Steps to add support for the T5 model [^4].
 * Port HuggingFace T5 model [^5] to vLLM
+  * This includes porting over the method which computes the custom attention bias matrix for T5 relative position encoding
+* Modify each T5 layer, where appropriate, to support TP > 1
+  * The custom attention bias computation must also support TP > 1
 * Add a T5 test to `tests/models/`
 
 #### Add other encoder/decoder models
@@ -155,53 +158,58 @@ Add support for the T5 model [^4].
 Extend existing vLLM multimodality support to encoder/decoder models.
 * Support `multi_modal_data` field in vLLM encoder/decoder input prompts
 * Support multi-modal data in encoder/decoder processing pipeline
-* Add a one or more unit tests with multi-modal data & encoder/decoder models
+* Add one or more unit tests with multi-modal data & encoder/decoder models
 
 Proposal: it makes sense to implement encoder/decoder multimodality in the same PR as adding the [Whisper model.](#add-whisper-model--multi-modality)
 
 ### Support custom attention bias
 
-Add custom attention bias support to vLLM kernels. 
+Note: [T5](#add-t5-model) takes a dependency on custom attention bias. Custom attention bias is likely complex enough to merit its own PR.
 
-This is not directly related to encoder/decoder functionality, however custom attention bias support is required by T5 [^4] which is a frequently-requested model.
+Custom attention bias is not directly related to encoder/decoder functionality, however custom attention bias support is required by T5 [^4] which is a frequently-requested encoder/decoder model.
 
 #### Custom attention bias and relative positional encoding
 
-Custom attention bias means refers to adding an arbitrary matrix $A$ to the scaled dot-product attention scores before performing softmax, as shown below:
+Attention bias refers to adding an matrix $A$ to the scaled dot-product (SDP) attention scores matrix before performing softmax, as shown below:
 
 $$
 attn(Q,K,V,A) = softmax(\frac{Q K^T + A}{\sqrt{d}})V
 $$
 
+Here, *custom* attention bias is understood to mean that the vLLM attention backend allows $A$ to be an arbitrary PyTorch tensor, provided the tensor dimensions are commensurate with the shape of the SDP attention scores matrix.
+
 T5 employs custom attention bias in order to implement relative positional encoding [^8], wherein pairwise positional relationships between tokens are represented by the bias matrix. The HuggingFace Transformers T5 implementation provides an example of how the relative positional encoding matrix is computed [^9].
 
 #### Existing attention bias support
 
-**Currently, no vLLM attention backend fully supports custom attention bias**. This is because most attention kernels employed by vLLM allow attention bias to be specified only in an indirect or "compressed" manner, i.e. through the use of a `causal=True/False` flag (causal attention mask being a type of attention bias.) The xFormers `memory_efficient_attention_forward` kernel[^7] is the exception, in that it permits an arbitrary pytorch tensor to be passed in via the `attn_bias` argument. However vLLM only employs this kernel for prefill; none of the decode-phase kernels employed by vLLM can accept an arbitrary pytorch tensor as a custom attention bias, making custom attention bias impossible to apply end-to-end for both prefill and decode. 
+*Currently, no vLLM attention backend fully supports custom attention bias*. This is because most attention kernels employed by vLLM allow attention bias to be specified only in an indirect or "compressed" manner, i.e. through the use of a `causal=True/False` flag (causal attention mask being a type of attention bias.) The xFormers `memory_efficient_attention_forward` kernel[^7] is the exception, in that it permits an arbitrary pytorch tensor to be passed in via the `attn_bias` argument. However vLLM only employs this kernel for prefill; none of the decode-phase kernels employed by vLLM can accept an arbitrary pytorch tensor as a custom attention bias, making custom attention bias impossible to apply end-to-end for both prefill and decode under the current vLLM implementation.
 
-An overview of how attention bias is currently handled by a subset of vLLM backends:
+In addition to lack of kernel-level support for custom attention bias, most vLLM backends also prevent passing a custom attention bias tensor to the underlying kernel. The exception is the XFormers backend, which accepts an attention bias via `XFormersMetadata.attn_bias` attribute.
 
-* Prefill
-  * xFormers backend: `BlockDiagonalMask` and `BlockDiagonalCausalMask` are used as compressed representations of non-causal and causal attention masks, respectively [^11]
-  * Flash-attention backend: the `causal` flag controls whether a non-causal or causal attention bias is employed [^10]
-  * Flashinfer backend: similar usage of a `causal` flag [^12]
-* Decode
-  * Autoregressive decoding is inherently causal. So the xFormers backend (which employs the PagedAttention kernel for decode) [^13] and FlashInfer [^14] simplify by omitting the `causal` flag entirely, since there is no support for a more general attention bias beyond causal or non-causal masking.
-  * Flash-attention backend uses the `causal=True` setting
+#### Initial goals for introducing custom attention bias support
 
-Additionally, the vLLM `Attention` wrapper does not currently expose a custom attention bias argument which would allow arbitrary pytorch tensors to pass into the attention kernel.
+1. Focus on a particular vLLM attention backend
+  * Suggestion: focus on an attention backend which also supports encoder/decoder models, in order to facilitate [running T5](#add-t5-model)
+2. Scope out the effort involved in introducing custom attention bias support to this backend
+3. Some steps which will likely be involved in introducing custom attention bias support:
+  * Augment attention backend's kernels to accept custom attention bias; for example, the PagedAttention kernel (for XFormers backend), the Flash-attention kernel (for the flash-attn backend), or the Flashinfer kernels (for the Flashinfer backend)
+  * (Except for XFormers) add an `attn_bias` attribute to attention backend's `AttentionMetadata` subclass
+  * Ensure that the attention backend passes the `attn_bias` attribute to both the prefill and decode kernels
+4. Add at least two custom attention bias unit tests (for prefill & decode respectively)
 
-#### Adding custom attention bias support
+#### Final goals for introducing custom attention bias support
 
-Note: [T5](#add-t5-model) takes a dependency on custom attention bias. Custom attention bias is likely complex enough to merit its own PR.
-
-
+* All vLLM attention backends should support custom attention bias, with unit tests
 
 ### Add support for encoder attention and cross-attention to additional kernels
 
 ### Support CUDAGraph with encoder/decoder models
 
 ### Support pipeline-parallelism with encoder/decoder models
+
+### Ensure full support for quantization with encoder/decoder models
+
+
 
 ### Low-priority, high-effort tasks
 
