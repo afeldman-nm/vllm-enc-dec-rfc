@@ -94,10 +94,40 @@ Apply special processing to the decoder prompt:
 
 ### 6. If the data contains multi-modal data, convert it into keyword arguments using MULTIMODAL_REGISTRY.map_input.
 
+## Memory management
+
+### vLLM memory profiling
+
+### How `Sequence`, `SequenceGroup`, `SequenceGroupMetadata`, and block tables are impacted by encoder/decoder
+
+### How block manager v1 swaps sequence groups between GPU and CPU memory
+
+#### Allocate/free/reset
+
+Allocation is performed at the granularity of a sequence group & provisions GPU memory for (1) the decoder self-attention KV cache block table, for each decoder sequence in the sequence group and (2) the single encoder/decoder cross-attention KV cache block table in the sequence group.
+
+```
+# Sequence group allocation example
+# (Note: the ordering of the physical block layout is not necessarily as shown)
+
+# GPU memory before allocation
+[M free blocks]
+
+# GPU memory after allocation
+[# blocks = len(cross-attn block table)]
+[# blocks = len(seq_0 decoder self-attn block table)]
+...
+[# blocks = len(seq_n decoder self-attn block table)]=
+[M' free blocks]
+```
+
+Where $M^\prime = M - |cross\_attn\_blocktable| - \sum_i{|seq_i\_decoder\_self\_attn\_block\_table|}$
+
+#### Swap-in (CPU -> GPU), swap-out (GPU -> CPU)
+
 ## Engine & scheduler modifications
 
-
-### Prompting an encoder/decoder model
+## Attention backend modifications
 
 ## BART integration
 
