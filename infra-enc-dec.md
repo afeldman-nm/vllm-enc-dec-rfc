@@ -169,13 +169,16 @@ The SDP attention score computation $Q K^T$ yields an attention score matrix; th
   <figcaption style="text-align: center; margin-top: 10px;">
   <small>
     <strong>Figure 2:</strong> Block-diagonal attention masks employed in the vLLM backend. Black regions correspond to intra-sequence attention in the SDP attention score matrix and would equal <em>0</em> in the attention mask. White regions correspond to inter-sequence attention in the SDP attention score matrix and would equal <em>-inf</em> in the attention mask. Left</em>: non-causal encoder attention for <em>N=4</em> concatenated sequences each with length <em>e_i</em> for <em>i</em> in <em>[0,N)</em>. <em>Middle</em>: causal decoder self-attention for <em>N=4</em> concatenated sequences each with length <em>d_i</em> for <em>i in [0,N)</em>. <em>Right</em>: non-causal encoder/decoder cross-attention between <em>N=4</em> decoder sequences each with length <em>d_i</em> for <em>i</em> in <em>[0,N)</em> and <em>N=4</em> encoder sequences each with length <em>e_i</em> for <em>i</em> in <em>[0,N)</em>.
+
+    <!-- -->
+    <!-- -->
+    <!-- -->
+    
     </small>
   </figcaption>
 </figure>
 
-<!-- -->
-<!-- -->
-<!-- -->
+
 
 The $i$-th block in the block-diagonal mask corresponds to the $i$-th sequence's attention matrix. Since causality is the default for decoder self-attention, the default is for each block along the diagonal of the decoder self-attention mask to have $-\infty$ in the upper-triangle and $0$ in the lower triangle (Figure 2, *middle*.) Non-causality is the default for encoder and encoder/decoder cross-attention, so the default is for each diagonal block in the encoder or cross-attention mask to be entirely $0$ (Figure 2, *left* and *right*.)
 
