@@ -11,7 +11,7 @@
   </p>
   <figcaption style="text-align: center; margin-top: 10px;">
     <small>
-    <strong>Figure 1:</strong> Encoder/decoder architecture during the prefill and decode phases. Encoder layers are abstracted as gray boxes, while decoder layers are blown-up to show how self-attention <em>(blue)</em> and cross-attention <em>(orange)</em> utilize KV caching. The KV caches shown are the decoder self-attn cache <em>(blue; "Self")</em> and the encoder/decoder cross-attn cache <em>(orange; "Cross")</em>. Although the model architecture does not change *per se* between the prefill and decode phases, nonetheless the encoder is omitted in the decode-phase diagram because all computations on the encoder hidden states are handled by the cross-attention KV cache.
+    <strong>Figure 1:</strong> Encoder/decoder architecture during the prefill and decode phases. Encoder layers are abstracted as gray boxes, while decoder layers are blown-up to show how self-attention <em>(blue)</em> and cross-attention <em>(orange)</em> utilize KV caching. The KV caches shown are the decoder self-attn cache <em>(blue; "Self")</em> and the encoder/decoder cross-attn cache <em>(orange; "Cross")</em>. Although the model architecture does not change <em>per se</em> between the prefill and decode phases, nonetheless the encoder is omitted in the decode-phase diagram because all computations on the encoder hidden states are handled by the cross-attention KV cache.
   </figcaption>
   </small>
 </figure>
