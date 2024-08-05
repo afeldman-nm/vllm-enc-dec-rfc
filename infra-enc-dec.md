@@ -139,13 +139,32 @@ Where $M^\prime = M - |cross.attn.blocktable| - \sum_{i}{|seq_{i}.decoder.self.a
 
 ## Attention backend modifications
 
-### Default encoder/decoder attention masks
+### Default encoder/decoder attention bias (or mask)
+
+Two factors which complicate scaled dot-product (SDP) attention computation in the vLLM backend are:
+
+1. For an $N$-sequence batch, vLLM passes the model a single token vector which is the concatenation of the $N$ sequences (without padding), and which has a total number of tokens equal to the sum of the token-counts of all $N$ sequences. The sequences must be passed to the `Attention` layers as such a single vector, **but the sequences may not attention to each other**.
+
+2. (Encoder/decoder only) By default (i.e. unless a particular model specifies otherwise), non-causal attention is employed for encoder attention & encoder/decoder cross-attention, while causal attention is employed for decoder self-attention.
+
+vLLM addresses both requirements by augmenting SDP attention with a *causal* or *non-causal block-diagonal attention mask*. The SDP attention computation may be augmented with a *bias* or *mask* matrix $A$:
+
+$$
+attn(Q,K,V,A) = softmax(\frac{Q K^T + A}{\sqrt{d}})V
+$$
+
+
+Currently, vLLM does not support *arbitrary* $A$ matrices (this is the focus of the [custom attention bias](./rfc.md#support-custom-attention-bias) workstream.) However, all vLLM attention backends support explicit (XFormers via `AttentionBias` class) or implicit (Flash-attention, Flashinfer via sequence start location arguments) configuration of a block-diagonal mask.
+
+The SDP attention score computation $Q K^T$ yields an attention score matrix; the white regions in Figure 2 reflect the portions of the attention score matrix corresponding to inter-sequence attention (which is undesirable), while the black regions correspond to within- or intra-sequence attention (desirable.) A block-diagonal attention mask $A$ prevents inter-sequence attention, provided that it is always equal to $-\infty$ in the white regions, as shown in Figure 2.
+
+
 
 <figure>
   <div style="display: flex; justify-content: space-between; align-items: center;">
-    <img src="img/enc_attn_mask.png" alt="Description of image 1" style="width:30%; margin-right: 10px;" />
-    <img src="img/dec_self_attn_mask.png" alt="Description of image 2" style="width:30%; margin-right: 10px;" />
-    <img src="img/enc_dec_cross_attn_mask.png" alt="Description of image 3" style="width:30%;" />
+    <img src="img/enc_attn_mask.png" alt="Block-diagonal encoder attention mask, alongside encoder attention layer Q & K" style="width:30%; margin-right: 10px;" />
+    <img src="img/dec_self_attn_mask.png" alt="Block-diagonal decoder self-attention mask, alongside decoder self-attention layer Q & K" style="width:30%; margin-right: 10px;" />
+    <img src="img/enc_dec_cross_attn_mask.png" alt="Block-diagonal encoder/decoder cross-attention mask, alongside cross-attention layer Q (derived from previous decoder self-attention layer output hidden states) and K (derived from encoder output hidden states.)" style="width:30%;" />
   </div>
   <figcaption style="text-align: center; margin-top: 10px;">
     <strong>Figure 2:</strong> Description of the three images showing different phases of the process.
