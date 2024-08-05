@@ -161,6 +161,10 @@ The SDP attention score computation $Q K^T$ yields an attention score matrix; th
 
 ---
 <figure>
+  <header style="text-align: center; font-size: larger; font-weight: bold;">
+    vLLM attention backend: block-diagonal masks for encoder, decoder self-, and encoder/decoder cross-attention
+  </header>
+
   <div style="display: flex; justify-content: space-between; align-items: center;">
     <img src="img/enc_attn_mask.png" alt="Block-diagonal encoder attention mask, alongside encoder attention layer Q & K" style="width:30%; margin-right: 10px;" />
     <img src="img/dec_self_attn_mask.png" alt="Block-diagonal decoder self-attention mask, alongside decoder self-attention layer Q & K" style="width:30%; margin-right: 10px;" />
