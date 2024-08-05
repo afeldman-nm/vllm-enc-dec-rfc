@@ -129,6 +129,11 @@ Where $M^\prime = M - |cross.attn.blocktable| - \sum_{i}{|seq_{i}.decoder.self.a
 
 ## Attention backend modifications
 
+<p float="left">
+  <img src="img/enc_dec_model_arch_prefill.png" alt="Encoder/decoder architecture (prefill phase)" width="45%" style="margin-right:10px;" />
+  <img src="img/enc_dec_model_arch_decode.png" alt="Encoder/decoder architecture (decode phase)" width="45%" />
+</p>
+
 ## BART integration
 
 Sources/notes:
