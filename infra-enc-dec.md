@@ -121,9 +121,7 @@ Allocation is performed at the granularity of a sequence group & provisions GPU 
 [M' free blocks]
 ```
 
-Where $M^\prime = M - |cross.attn.blocktable|$
-
- - \sum_{i}{|seq_{i}\_decoder\_self\_attn\_block\_table|}
+Where $M^\prime = M - |cross.attn.blocktable| - \sum_{i}{|seq_{i}.decoder.self.attn.block.table|}$
 
 #### Swap-in (CPU -> GPU), swap-out (GPU -> CPU)
 
