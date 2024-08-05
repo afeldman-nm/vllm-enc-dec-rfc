@@ -1,5 +1,15 @@
 # vLLM encoder/decoder infrastructure overview
 
+<figure>
+  <p float="left">
+    <img src="img/enc_dec_model_arch_prefill.png" alt="Encoder/decoder architecture (prefill phase)" width="45%" style="margin-right:10px;" />
+    <img src="img/enc_dec_model_arch_decode.png" alt="Encoder/decoder architecture (decode phase)" width="45%" />
+  </p>
+  <figcaption style="text-align: center; margin-top: 10px;">
+    <strong>Figure 1:</strong> Encoder/decoder architecture during the prefill and decode phases. Encoder layers are abstracted as gray boxes, while decoder layers are blown-up to show how self- and cross-attention utilize KV caching. The KV caches shown are the decoder self-attn cache (blue; "Self") and the encoder/decoder cross-attn cache (orange; "Cross".) Although the model architecture does not change *per se* between the prefill and decode phases, nonetheless the encoder is omitted in the decode-phase diagram because all computations on the encoder hidden states are handled by the cross-attention KV cache.
+  </figcaption>
+</figure>
+
 ## Encoder/decoder request processing pipeline
 
 [This page](https://docs.vllm.ai/en/latest/dev/input_processing/input_processing_pipeline.html#input-processing-pipeline) introduces the vLLM input processing pipeline.
@@ -129,10 +139,19 @@ Where $M^\prime = M - |cross.attn.blocktable| - \sum_{i}{|seq_{i}.decoder.self.a
 
 ## Attention backend modifications
 
-<p float="left">
-  <img src="img/enc_dec_model_arch_prefill.png" alt="Encoder/decoder architecture (prefill phase)" width="45%" style="margin-right:10px;" />
-  <img src="img/enc_dec_model_arch_decode.png" alt="Encoder/decoder architecture (decode phase)" width="45%" />
-</p>
+### Default encoder/decoder attention masks
+
+<figure>
+  <div style="display: flex; justify-content: space-between; align-items: center;">
+    <img src="img/enc_attn_mask.png" alt="Description of image 1" style="width:30%; margin-right: 10px;" />
+    <img src="img/dec_self_attn_mask.png" alt="Description of image 2" style="width:30%; margin-right: 10px;" />
+    <img src="img/enc_dec_cross_attn_mask.png" alt="Description of image 3" style="width:30%;" />
+  </div>
+  <figcaption style="text-align: center; margin-top: 10px;">
+    <strong>Figure 2:</strong> Description of the three images showing different phases of the process.
+  </figcaption>
+</figure>
+
 
 ## BART integration
 
