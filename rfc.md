@@ -4,7 +4,7 @@ tl;dr With Encoder/decoder model support landing soon, the next steps are to (1)
 
 ## Motivation
 
-There is significant interest in vLLM supporting encoder/decoder models. [Issues 187](https://github.com/vllm-project/vllm/issues/187) and [180](https://github.com/vllm-project/vllm/issues/180), for example, request encoder/decoder model support. As a result encoder/decoder support will be introduce to vLLM via the following three PRs:
+There is significant interest in vLLM supporting encoder/decoder models. [Issues 187](https://github.com/vllm-project/vllm/issues/187) and [180](https://github.com/vllm-project/vllm/issues/180), for example, request encoder/decoder model support. As a result encoder/decoder support will be introduced to vLLM via the following three PRs:
 
 * **(Merged)** [[Core] Cross-attention KV caching and memory-management](https://github.com/vllm-project/vllm/pull/4837)
 * **(Merged)** [[Kernel] Correctly invoke prefill & decode kernels for cross-attention](https://github.com/vllm-project/vllm/pull/4888)
