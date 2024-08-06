@@ -1,5 +1,7 @@
 # vLLM encoder/decoder infrastructure overview
 
+This document overviews the vLLM request-processing pipeline for encoder/decoder models, highlighting those aspects which differ from vLLM's decoder-only pipeline.
+
 ---
 
 ### *Encoder/decoder architecture diagram (prefill- and decode-phase)*
@@ -11,89 +13,144 @@
   </p>
   <figcaption style="text-align: center; margin-top: 10px;">
     <small>
-    <strong>Figure 1:</strong> Encoder/decoder architecture during the prefill <em>(left)</em> and decode <em>(right)</em> phases. Encoder layers are abstracted as gray boxes, while decoder layers are blown-up to show how self-attention <em>(blue)</em> and cross-attention <em>(orange)</em> utilize KV caching. The KV caches shown are the decoder self-attn cache <em>(blue; "Self")</em> and the encoder/decoder cross-attn cache <em>(orange; "Cross")</em>. Although the model architecture does not change <em>per se</em> between the prefill and decode phases, nonetheless the encoder is omitted in the decode-phase diagram because all computations on the encoder hidden states are handled by the cross-attention KV cache.
+    <strong>Figure 1:</strong> Encoder/decoder architecture during the prefill <em>(left)</em> and decode <em>(right)</em> phases. Encoder layers are abstracted as gray boxes, while decoder layers are blown-up to show how self-attention <em>(blue)</em> and cross-attention <em>(orange)</em> utilize KV caching. The KV caches shown are the decoder self-attn cache <em>(blue; "Self")</em> and the encoder/decoder cross-attn cache <em>(orange; "Cross")</em>. Although the model architecture does not change <em>per se</em> between the prefill and decode phases, nonetheless the encoder is omitted in the decode-phase diagram because all computations on the encoder hidden states are handled by the cross-attention KV cache, which is read-only during decode-phase. The decoder self-attention KV cache is updated with each new decoded token.
+    </small>
   </figcaption>
-  </small>
 </figure>
 
 ---
 
-## Encoder/decoder request processing pipeline
+Figure 1, which reviews the generalized architecture of encoder/decoder models, clarifies the key features of encoder/decoder models which complicate the vLLM processing pipeline:
 
-[This page](https://docs.vllm.ai/en/latest/dev/input_processing/input_processing_pipeline.html#input-processing-pipeline) introduces the vLLM input processing pipeline.
+* Both the encoder and decoder modules accept input prompts (Figure 1.) This means that, upon receiving a user request, vLLM must be able to either extract or infer both an encoder input prompt and a decoder input prompt.
+    * At the other end, the request output - in order to be sensible to a human reader - must include the encoder & decoder input prompts as well as the decoded tokens.
+* Once the encoder & decoder input prompts have been extracted, it must be possible to construct the usual vLLM intermediate representations such as `Sequence`, `SequenceGroup`, `SequenceGroupMetadata`, etc. Specifically, the encoder sequence - which is static after prefill - must be tracked alongside the decoder sequences, which are updated at each scheduler step.
+* Figure 1 *(right)* shows that after prefill, it is possible to entirely discard the encoder output hidden states & make sole use of the cached cross-attention KVs to perform decode-phase cross-attention. This has significant implications for the request-processing pipeline:
+    * In addition to the pre-existing vLLM "decoder self-attention" KV caches and associated block tables, the vLLM scheduler must now construct an "encoder/decoder cross-attention KV cache" and associated block table for each `SequenceGroupMetadata`.
+    * The block manager - orchestrated by the scheduler - must correctly allocate, free and swap cross-attention KV cache.
+    * The model runner must pass cross-attention block tables and slot mappings as input to models. The `AttentionMetadata` structure must include additional fields related to encoder sequences & cross-attention memory-mapping.
+* The implementation of encoder/decoder models has additional considerations:
+    * In addition to decoder inputs, models must also accept encoder input token & position vectors
+    * Models must incorporate layers for encoder inference, decoder self-attention, and encoder/decoder cross-attention, utilizing the encoder input token/position vectors as well as the encoder- and cross-attention-oriented `AttentionMetadata` fields constructed by the model runner.
+* Finally, the attention backends must support encoder attention, decoder self-attention, and encoder/decoder cross-attention. At time of writing only XFormers attention backend supports all of these capabilities.
 
-Encoder/decoder models impact the behavior at each pipeline stage.
+The following sections will add more detail. It may be helpful to review [the official vLLM input process pipeline doc](https://docs.vllm.ai/en/latest/dev/input_processing/input_processing_pipeline.html#input-processing-pipeline) before continuing.
 
-### 1. Input data is passed to `LLMEngine` (or `AsyncLLMEngine`)
+## 1. Issuing a request to vLLM
 
-A single vLLM API call may pass one request or a set of requests to the vLLM engine; vLLM expects a decoder-only model request to have a single input prompt (this is effectively true even for decoder-only multi-modal models.) 
+It must be possible for an encoder/decoder request to specify both encoder and decoder prompts, a feature which was not previously supported by vLLM.
 
-In contrast, there are naturally two submodules (encoder and decoder) in an encoder/decoder model, which can both accept an input prompt. The encoder prompt is typically the "primary" input associated with the model's intended workload or functionality, however the decoder prompt is commonly used to tune model behavior, especially through the use of special tokens. Whisper [^1] accepts preprocessed audio embeddings as the encoder input "prompt", yet the model's configuration settings (language, speech-recognition task, etc.) are mapped to control tokens in the decoder prompt. 
+However, it is also normal for encoder/decoder models to be invoked by passing in only a single prompt (or audio waveform.) In these cases, the input to `model.generate()` is typically passed to the encoder. The reason is that the encoder input is usually the "primary" input reflecting the purpose the model was designed for, whereas the decoder input - if specified by the user at all - is for tuning model behavior. For example:
 
-Thus, it must be possible for an encoder/decoder inference request to specify both encoder and decoder prompts, a feature which was not previously supported by vLLM.
+* With HuggingFace (HF) BART, invoking `model.generate(prompt)` passes `prompt` to the encoder input, because the encoder encodes the question or document to summarize.
+* With HF Whisper - a speech recognition model - preprocessed audio embeddings are passed to the encoder as input. The user rarely specifies a decoder prompt directly; instead the `WhisperConfig` determines translation language, timestamps, task, and other model behaviors. During inference Whisper effectively injects these settings into the decoder sequence as control tokens.
 
-#### Multimodal inputs
+This suggests that when vLLM is running an encoder/decoder model, requests should always contain an encoder input prompt, and if the request contains only a single prompt then it should be assumed to be an encoder input prompt; however, it should also be possible for a request to specify an additional decoder prompt, in case the user wants to tune model behavior. Furthermore, if the user specifies only the encoder input prompt, vLLM must be able to guess a "default" decoder prompt.
 
-#### Supported encoder/decoder prompt formats
+### Supported encoder/decoder prompt formats
 
-The encoder/decoder infrastructure PRs enable the following encoder/decoder request formats:
+To that end, vLLM supports the following request formats for encoder/decoder models:
 
-* Single encoder prompt
+* Singleton prompt (implicitly an encoder prompt)
 
-    The decoder prompt is implicitly `None`.
+    * Singleton prompt string
+        * vLLM will tokenize this prompt and pass the token-list to the encoder.
+        * vLLM will pass a default prompt to the decoder.
 
-    * Single encoder prompt string
+        For example passing the singleton prompt below to vLLM BART
 
-    ```
-    "The rain in spain falls mainly on the"
-    ```
+        ```
+        "The rain in spain falls mainly on the"
+        ```
 
-    * Single encoder `TextPrompt` with prompt string and optional multi-modal inputs
+        results in
 
-    ```
-    TextPrompt(
-        'prompt': "The rain in spain falls mainly on the",
-        'multi_modal_data': {
-            ...
-        }
-    )
-    ```
+        ```
+        Encoder prompt: tokenize("The rain in spain falls mainly on the")
+        Decoder prompt: [2,0] # <DEC><BOS>
+        ```
 
-    * Single encoder `TokensPrompt` with prompt tokens and optional multi-modal inputs
+        where `<DEC>` is decoder start token.
 
-    ```
-    TokensPrompt(
-        'prompt_tokens': [2,0,171,5,2],
-        'multi_modal_data': {
-            ...
-        }
-    )
-    ```
+    * Singleton `TextPrompt`
+        * vLLM will extract the prompt text, tokenize it and pass the token-list to the encoder.
+        * vLLM will pass a default prompt to the decoder.
 
-* Explicit encoder & decoder prompts
+        For example passing the `TextPrompt` below to vLLM BART
 
-    ```
-    ExplicitEncoderDecoderPrompt(
-        'encoder_prompt': <any prompt>,
-        'decoder_prompt': <any prompt without multi-modal>
-    )
-    ```
+        ```
+        TextPrompt(
+            'prompt': "The rain in spain falls mainly on the",
+        )
+        ```
 
-    For example:
+        results in
 
-    ```
-    ExplicitEncoderDecoderPrompt(
-        'encoder_prompt': TextPrompt(
-                                'prompt': "The rain in spain falls mainly on the",
-                                'multi_modal_data': {
-                                    ...
-                                }
-                            ),
-        'decoder_prompt': "<BOS>"
-    )
-    ```
+        ```
+        Encoder prompt: tokenize("The rain in spain falls mainly on the")
+        Decoder prompt: [2,0] # <DEC><BOS>
+        ```
 
-    The syntax for passing one or more prompts to `LLMEngine` or `AsyncLLMEngine` is unchanged.
+        which is the same as for the raw text prompt. `TextPrompt` will only be useful for encoder/decoder models one multi-modal support is added.
+
+    * Singleton `TokensPrompt` with prompt tokens
+        * vLLM will pass the unmodified token-list directly to the encoder.
+        * vLLM will pass a default prompt to the decoder.
+
+        For example passing the `TokensPrompt` below to vLLM BART
+
+        ```
+        TokensPrompt(
+            'prompt_tokens': [2,0,171,5,2]
+        )
+        ```
+
+        results in
+
+        ```
+        Encoder prompt: [2,0,171,5,2]
+        Decoder prompt: [2,0] # <DEC><BOS>
+        ```
+
+* Explicit encoder/decoder prompt
+    * Structure:
+
+        ```
+        ExplicitEncoderDecoderPrompt(
+            'encoder_prompt': <Singleton prompt>,
+            'decoder_prompt': <Singleton prompt>
+        )
+        ```
+
+        * Each sub-prompt may be any of the aforementioned types of singleton prompt
+        * vLLM will tokenize any sub-prompt which is not a token-list into a token-list
+        * vLLM will preprocess the decoder prompt
+        * vLLM will pass the encoder prompt tokens to the encoder and the preprocessed decoder prompt to the decoder
+
+        For example passing the `ExplicitEncoderDecoderPrompt` below to BART
+
+        ```
+        ExplicitEncoderDecoderPrompt(
+            'encoder_prompt': TextPrompt(
+                                    'prompt': "The rain in spain falls mainly on the",
+                                ),
+            'decoder_prompt': [2, 0, 51, 178, 2]
+        )
+        ```
+
+        results in
+
+        ```
+        Encoder prompt: tokenize("The rain in spain falls mainly on the")
+        Decoder prompt: [2, 0, 51, 178, 2]
+        ```
+
+Additional notes on encoder/decoder prompts
+
+* Regarding decoder prompts for general encoder/decoder models, vLLM emulates the behavior of HuggingFace transformers `GenerationMixin`:
+    * vLLM's default decoder prompt is `<DEC><BOS>` where `<DEC>` is decoder start token and `<BOS>` is beginning-of-sequence token. 
+    * When the user specifies a decoder prompt that does *not* begin with `<DEC>`, `<DEC>` will be prepended to the prompt tokens during decoder prompt preprocessing. If the prompt tokens already begin with `<DEC>` then decoder prompt processing makes no change.
+* However, if you are adding a new encoder/decoder model to vLLM you should consider whether vLLM's default decoder prompt & decoder prompt preprocessing logic need to be specialized for your model.
 
 ### 2. Tokenize the data if necessary.
 
@@ -162,9 +219,15 @@ attn(Q,K,V,A) = softmax(\frac{Q K^T + A}{\sqrt{d}})V
 $$
 
 
-Currently, vLLM does not support *arbitrary* $A$ matrices (this is the focus of the [custom attention bias](./rfc.md#support-custom-attention-bias) workstream.) However, all vLLM attention backends support explicit (XFormers via `AttentionBias` class) or implicit (Flash-attention, Flashinfer via sequence start location & `causal` arguments) configuration of a causal or non-causal block-diagonal attention mask.
+Currently, vLLM does not support *arbitrary* $A$ matrices (this is the focus of the [custom attention bias](./rfc.md#support-custom-attention-bias) workstream.) However, all vLLM attention backends support explicit (XFormers via `AttentionBias` class) or implicit (Flash-attention, Flashinfer via the sequence start location argument) configuration of a block-diagonal attention mask in which all elements outside of the diagonal blocks are $-\infty$.
 
-The SDP attention score computation $Q K^T$ yields an attention score matrix; the white regions in Figure 2 reflect the portions of the attention score matrix corresponding to inter-sequence attention (which is undesirable), while the black regions correspond to within- or intra-sequence attention (desirable.) A block-diagonal attention mask $A$ prevents inter-sequence attention, provided that it is always equal to $-\infty$ in the white regions, as shown in Figure 2.
+However, at time of writing, XFormers is the only backend in which the block-diagonal attention mask is configurable to support
+* Non-causal encoder attention/cross-attention
+* Causal decoder self-attention
+
+The other backends only support causal decoder self-attention (changing this is the one aspect of the [workstream to support encoder/decoder models in additional vLLM backends beyond xFormers](rfc.md#add-support-for-encoder-attention-and-cross-attention-to-additional-backends).)
+
+The SDP attention score computation $Q K^T$ yields an attention score matrix; the white regions outside of the diagonal blocks in Figure 2 reflect the portions of the attention score matrix corresponding to inter-sequence attention (which is we would like to omit from computation), while the diagonal blocks correspond to within- or intra-sequence attention (which belongs in the computation.) A block-diagonal attention mask $A$ prevents inter-sequence attention, provided that it is always equal to $-\infty$ in the inter-sequence regions of the SDP attention score matrix, as shown in Figure 2.
 
 
 ---
@@ -187,7 +250,7 @@ The SDP attention score computation $Q K^T$ yields an attention score matrix; th
 
 The $i$-th block in the block-diagonal mask corresponds to the $i$-th sequence's attention matrix. Since causality is the default for decoder self-attention, the default is for each block along the diagonal of the decoder self-attention mask to have $-\infty$ in the upper-triangle and $0$ in the lower triangle (Figure 2, *middle*.) Non-causality is the default for encoder and encoder/decoder cross-attention, so the default is for each diagonal block in the encoder or cross-attention mask to be entirely $0$ (Figure 2, *left* and *right*.)
 
-Note the rectangular shape of the diagonal blocks in the cross-attention mask, as compared to the square blocks in the encoder and decoder self-attention masks. In encoder and decoder attention, Q and K are derived from the same source (previous encoder or decoder layer output, respectively) and thus have the same length; therefore, the regions of the SDP attention score matrix corresponding to intra-sequence attention will always be square. In constrast, cross-attention Q is derived from the decoder self-attention hidden state output while K is derived from the encoder hidden states. Since the encoder and decoder have different input prompts, Q and K may differ in length for cross-attention, which is why the diagonal blocks are rectangular.
+Note the rectangular shape of the diagonal blocks in the cross-attention mask, as compared to the square blocks in the encoder and decoder self-attention masks. In encoder attention and decoder self-attention, Q and K are derived from the same source (previous encoder or decoder layer output, respectively) and thus have the same length; therefore, the regions of the SDP attention score matrix corresponding to intra-sequence attention will always be square. In constrast, cross-attention Q is derived from the decoder self-attention hidden state output while K is derived from the encoder hidden states. Since the encoder and decoder have different input prompts, Q and K may differ in length for cross-attention, which is why the diagonal blocks are rectangular.
 
 ## BART integration
 
