@@ -8,7 +8,7 @@ There is significant interest in vLLM supporting encoder/decoder models. [Issues
 
 * **(Merged)** [[Core] Cross-attention KV caching and memory-management](https://github.com/vllm-project/vllm/pull/4837)
 * **(Merged)** [[Kernel] Correctly invoke prefill & decode kernels for cross-attention](https://github.com/vllm-project/vllm/pull/4888)
-* **(Landing soon)** [[Core] Subclass ModelRunner to support cross-attention & encoder sequences](https://github.com/vllm-project/vllm/pull/4942)
+* **(Merged)** [[Core] Subclass ModelRunner to support cross-attention & encoder sequences](https://github.com/vllm-project/vllm/pull/4942)
 
 These three PRs make encoder/decoder model inference possible, but leave more to be desired in terms of feature compatibility with encoder/decoder & the number of encoder/decoder models which are supported.
 
