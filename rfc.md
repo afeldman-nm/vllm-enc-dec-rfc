@@ -65,7 +65,7 @@ The support matrix below summarizes which features & encoder/decoder models will
     <td><strong><u>Yes</u></strong></td>
   </tr>
   <tr>
-    <td>custom attention bias support</td>
+    <td>Custom attention bias support</td>
     <td>No</td>
     <td><strong><u>Yes</u></strong></td>
   </tr>
