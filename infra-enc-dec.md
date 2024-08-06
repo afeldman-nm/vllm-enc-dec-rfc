@@ -91,7 +91,7 @@ To that end, vLLM supports the following request formats for encoder/decoder mod
         Decoder prompt: [2,0] # <DEC><BOS>
         ```
 
-        which is the same as for the raw text prompt. `TextPrompt` will only be useful for encoder/decoder models one multi-modal support is added.
+        which is the same as for the raw text prompt. `TextPrompt` will only be useful for encoder/decoder models once multi-modal support is added.
 
     * Singleton `TokensPrompt` with prompt tokens
         * vLLM will pass the unmodified token-list directly to the encoder.
