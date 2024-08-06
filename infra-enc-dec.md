@@ -125,7 +125,7 @@ To that end, vLLM supports the following request formats for encoder/decoder mod
         * Each sub-prompt may be any of the aforementioned types of singleton prompt
         * vLLM will tokenize any sub-prompt which is not a token-list into a token-list
         * vLLM will preprocess the decoder prompt
-        * vLLM will pass the encoder prompt tokens to the encoder and the preprocessed decoder prompt to the decoder
+        * vLLM will pass the encoder prompt tokens to the encoder and the preprocessed decoder prompt tokens to the decoder
 
         For example passing the `ExplicitEncoderDecoderPrompt` below to BART
 
