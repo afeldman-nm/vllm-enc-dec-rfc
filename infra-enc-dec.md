@@ -40,7 +40,7 @@ The following sections will add more detail. It may be helpful to review [the of
 
 It must be possible for an encoder/decoder request to specify both encoder and decoder prompts, a feature which was not previously supported by vLLM.
 
-However, it is also normal for encoder/decoder models to be invoked by passing in only a single prompt (or audio waveform.) In these cases, the input to `model.generate()` is typically passed to the encoder. The reason is that the encoder input is usually the "primary" input reflecting the purpose the model was designed for, whereas the decoder input - if specified by the user at all - is for tuning model behavior. For example:
+However, it is also normal for encoder/decoder models to be invoked by passing in only a single prompt. In these cases, the input to `model.generate()` is typically passed to the encoder. The reason is that the encoder input is usually the "primary" input reflecting the purpose the model was designed for, whereas the decoder input - if specified by the user at all - is for tuning model behavior. For example:
 
 * With HuggingFace (HF) BART, invoking `model.generate(prompt)` passes `prompt` to the encoder input, because the encoder encodes the question or document to summarize.
 * With HF Whisper - a speech recognition model - preprocessed audio embeddings are passed to the encoder as input. The user rarely specifies a decoder prompt directly; instead the `WhisperConfig` determines translation language, timestamps, task, and other model behaviors. During inference Whisper effectively injects these settings into the decoder sequence as control tokens.
