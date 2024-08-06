@@ -128,7 +128,7 @@ See `tests/models/test_bart.py` for an example of an encoder/decoder model unit 
 
 #### Add Whisper model & multi-modality
 
-Steps to add support for Whisper [^1], a multi-modal encoder/decoder speech recognition model.
+Steps to add support for Whisper [^1], a multi-modal encoder/decoder speech recognition model:
 * [Extend existing vLLM multimodality support to encoder/decoder models](#support-encoderdecoder-multimodality)
 * Extend existing vLLM prompt processing pipline to support audio
 * Port HuggingFace Whisper model [^2] to vLLM; an existing open PR for this workstream can be found here [^3]
