@@ -175,30 +175,55 @@ Apply special processing to the decoder prompt:
 
 ### How `Sequence`, `SequenceGroup`, `SequenceGroupMetadata`, and block tables are impacted by encoder/decoder
 
-### How block manager v1 swaps sequence groups between GPU and CPU memory
+### How block space manager v1 manages GPU and CPU memory for encoder/decoder models
 
-#### Allocate/free/reset
+(For brevity, the impact of encoder/decoder on block space manager v2 is omitted here.)
 
-Allocation is performed at the granularity of a sequence group & provisions GPU memory for (1) the decoder self-attention KV cache block table, for each decoder sequence in the sequence group and (2) the single encoder/decoder cross-attention KV cache block table in the sequence group.
+#### Allocate
 
-```
-# Sequence group allocation example
-# (Note: the ordering of the physical block layout is not necessarily as shown)
+* The block manager is managing $total\_num\_gpu\_blocks$ GPU memory blocks and $total\_num\_cpu\_blocks$ CPU memory blocks
+* `block_man.allocate(seq_group)` provisions:
+  * One self-attention KV cache for each decoder sequence in the `SequenceGroup`
+  * One KV cache for cross-attention, with the number of token slots equal to the length of the `SequenceGroup`'s encoder sequence.
+  * Allocation yields a block table for the cross-attention KV cache & one block table for each self-attention KV cache
+  * **Total # of blocks:**
 
-# GPU memory before allocation
-[M free blocks]
+    $$ (seq\; group\; blocks) = |cross\; attn\; blocktable| + \sum_{i}^{num\; seqs}{|seq_{i}\; decoder\; self\; attn\; block\; table|} $$
+  * After allocation,
 
-# GPU memory after allocation
-[# blocks = len(cross-attn block table)]
-[# blocks = len(seq_0 decoder self-attn block table)]
-...
-[# blocks = len(seq_n decoder self-attn block table)]
-[M' free blocks]
-```
+    $$ (free\; gpu\; blocks\; after\; alloc) = (free\; gpu\; blocks) - (seq\; group\; blocks) $$
 
-Where $M^\prime = M - |cross.attn.blocktable| - \sum_{i}{|seq_{i}.decoder.self.attn.block.table|}$
+#### Swap
 
-#### Swap-in (CPU -> GPU), swap-out (GPU -> CPU)
+* `block_man.swap_out(seq_group)` accomplishes GPU -> CPU swap for a `SequenceGroup`'s KV caches.
+  * After swap,
+
+    $$(free\; gpu\; blocks\; after\; swap\; out) = (free\; gpu\; blocks) + (seq\; group\; blocks)$$
+    $$(free\; cpu\; blocks\; after\; swap\; out) = (free\; cpu\; blocks) - (seq\; group\; blocks)$$
+
+* `block_man.swap_in(seq_group)` accomplishes CPU -> GPU swap for a `SequenceGroup`'s KV caches.
+  * After swap,
+
+    $$(free\; gpu\; blocks\; after\; swap\; in) = (free\; gpu\; blocks) - (seq\; group\; blocks)$$
+    $$(free\; cpu\; blocks\; after\; swap\; in) = (free\; cpu\; blocks) + (seq\; group\; blocks)$$
+
+#### Free
+
+* `block_man.free(seq)` frees the self-attention KV cache blocks associated with the `Sequence` argument passed in.
+  * After `free()`,
+  
+    $$ free\; device\; blocks\; after\; free = free\; device\; blocks\ + |seq_{i}\; decoder\; self\; attn\; block\; table| $$
+
+    where $device$ is whichever of $\{CPU,GPU\}$ the `SequenceGroup` currently resides in, and $i$ is the `Sequence` id
+
+* `block_man.free_cross(seq_group)` frees the cross-attention KV cache blocks associated with the `SequenceGroup` argument passed in.
+  * After `free_cross()`,
+
+    $$ free\; device\; blocks\; after\; free\_cross = free\; device\; blocks\ + |cross\; attn\; blocktable| $$
+
+    where $device$ is whichever of $\{CPU,GPU\}$ the `SequenceGroup` currently resides in.
+
+* `block_man.reset()` frees all cache blocks associated with all block tables managed by the block manager, after which there are $total\_num\_gpu\_blocks$ free GPU memory blocks and $total\_num\_cpu\_blocks$ free CPU memory blocks
 
 ## Engine & scheduler modifications
 
