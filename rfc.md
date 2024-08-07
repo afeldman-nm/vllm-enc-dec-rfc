@@ -141,7 +141,7 @@ Proposal: it makes sense to implement encoder/decoder multimodality, audio suppo
 
 Note: T5 depends on [custom attention bias being supported](#support-custom-attention-bias) by at least one of the attention backends which [also supports encoder attention & cross-attention](#add-support-for-encoder-attention-and-cross-attention-to-additional-backends); at time of writing this is not the case, since XFormers backend supports encoder/decoder models but no backend supports custom attention bias. (Custom attention bias is required in order to support T5 [relative positional encoding.](#custom-attention-bias-and-relative-positional-encoding))
 
-Steps to add support for the T5 model [^4].
+Steps to add support for the T5 model [^4]:
 * Port HuggingFace T5 model [^5] to vLLM
   * This includes porting over the method which computes the custom attention bias matrix for T5 relative position encoding
 * Modify each T5 layer, where appropriate, to support TP > 1
