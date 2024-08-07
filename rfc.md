@@ -4,11 +4,11 @@ tl;dr With Encoder/decoder model support landing soon, the next steps are to (1)
 
 ## Motivation
 
-There is significant interest in vLLM supporting encoder/decoder models. [Issues 187](https://github.com/vllm-project/vllm/issues/187) and [180](https://github.com/vllm-project/vllm/issues/180), for example, request encoder/decoder model support. As a result encoder/decoder support will be introduce to vLLM via the following three PRs:
+There is significant interest in vLLM supporting encoder/decoder models. [Issues 187](https://github.com/vllm-project/vllm/issues/187) and [180](https://github.com/vllm-project/vllm/issues/180), for example, request encoder/decoder model support. As a result encoder/decoder support will be introduced to vLLM via the following three PRs:
 
 * **(Merged)** [[Core] Cross-attention KV caching and memory-management](https://github.com/vllm-project/vllm/pull/4837)
 * **(Merged)** [[Kernel] Correctly invoke prefill & decode kernels for cross-attention](https://github.com/vllm-project/vllm/pull/4888)
-* **(Landing soon)** [[Core] Subclass ModelRunner to support cross-attention & encoder sequences](https://github.com/vllm-project/vllm/pull/4942)
+* **(Merged)** [[Core] Subclass ModelRunner to support cross-attention & encoder sequences](https://github.com/vllm-project/vllm/pull/4942)
 
 These three PRs make encoder/decoder model inference possible, but leave more to be desired in terms of feature compatibility with encoder/decoder & the number of encoder/decoder models which are supported.
 
@@ -65,7 +65,7 @@ The support matrix below summarizes which features & encoder/decoder models will
     <td><strong><u>Yes</u></strong></td>
   </tr>
   <tr>
-    <td>custom attention bias support</td>
+    <td>Custom attention bias support</td>
     <td>No</td>
     <td><strong><u>Yes</u></strong></td>
   </tr>
@@ -128,9 +128,9 @@ See `tests/models/test_bart.py` for an example of an encoder/decoder model unit 
 
 #### Add Whisper model & multi-modality
 
-Steps to add support for Whisper [^1], a multi-modal encoder/decoder speech recognition model.
+Steps to add support for Whisper [^1], a multi-modal encoder/decoder speech recognition model:
 * [Extend existing vLLM multimodality support to encoder/decoder models](#support-encoderdecoder-multimodality)
-* Extend existing vLLM prompt processing pipline to support audio
+* Extend existing vLLM prompt processing pipeline to support audio
 * Port HuggingFace Whisper model [^2] to vLLM; an existing open PR for this workstream can be found here [^3]
 * Modify each Whisper layer, where appropriate, to support TP > 1
 * Add a Whisper test under `tests/models/`
@@ -141,7 +141,7 @@ Proposal: it makes sense to implement encoder/decoder multimodality, audio suppo
 
 Note: T5 depends on [custom attention bias being supported](#support-custom-attention-bias) by at least one of the attention backends which [also supports encoder attention & cross-attention](#add-support-for-encoder-attention-and-cross-attention-to-additional-backends); at time of writing this is not the case, since XFormers backend supports encoder/decoder models but no backend supports custom attention bias. (Custom attention bias is required in order to support T5 [relative positional encoding.](#custom-attention-bias-and-relative-positional-encoding))
 
-Steps to add support for the T5 model [^4].
+Steps to add support for the T5 model [^4]:
 * Port HuggingFace T5 model [^5] to vLLM
   * This includes porting over the method which computes the custom attention bias matrix for T5 relative position encoding
 * Modify each T5 layer, where appropriate, to support TP > 1
