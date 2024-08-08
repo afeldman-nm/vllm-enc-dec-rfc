@@ -4,7 +4,7 @@ tl;dr With Encoder/decoder model support landing soon, the next steps are to (1)
 
 ## Motivation
 
-There is significant interest in vLLM supporting encoder/decoder models. [Issues 187](https://github.com/vllm-project/vllm/issues/187) and [180](https://github.com/vllm-project/vllm/issues/180), for example, request encoder/decoder model support. As a result encoder/decoder support will be introduced to vLLM via the following three PRs:
+There is significant interest in vLLM supporting encoder/decoder models. [Issues 187](https://github.com/vllm-project/vllm/issues/187) and [180](https://github.com/vllm-project/vllm/issues/180), for example, request encoder/decoder model support. As a result encoder/decoder support was introduced to vLLM via the following three PRs:
 
 * **(Merged)** [[Core] Cross-attention KV caching and memory-management](https://github.com/vllm-project/vllm/pull/4837)
 * **(Merged)** [[Kernel] Correctly invoke prefill & decode kernels for cross-attention](https://github.com/vllm-project/vllm/pull/4888)
@@ -119,6 +119,8 @@ It will also be helpful to review [this how-to guide](how-to.md) for adding new 
 Members of the vLLM contributor community identify models/features in the support matrix above, for which they will work on writing a PR.
 
 ## Detailed long-term goals
+
+Note: to make these features compatible with encoder/decoder, you will need to remove asserts which currently fail if these features are enabled for encoder/decoder models. Most of these assertions are implemented in `assert_enc_dec_mr_supported_scenario()` which can be found [here](https://github.com/vllm-project/vllm/blob/6dffa4b0a6120159ef2fe44d695a46817aff65bc/vllm/worker/utils.py#L9-L56).
 
 ### Quantization
 
@@ -260,6 +262,29 @@ T5 employs custom attention bias in order to implement relative positional encod
 
 In addition to lack of kernel-level support for custom attention bias, most vLLM backends also prevent passing a custom attention bias matrix to the underlying kernel. The exception is the XFormers backend, which accepts an attention bias via `XFormersMetadata.attn_bias` attribute (however the XFormers backend only utilizes `attn_bias` in the prefill phase.)
 
+#### Proposed methods for supporting custom attention bias
+
+Here the following two approaches for supporting custom attention bias in vLLM are proposed:
+* **Fully-materialized bias matrix:** Modify vLLM attention backends to accept an arbitrary PyTorch tensor, passed into the backend via the `AttentionMetadata.attn_bias` field.
+* **On-the-fly/fused bias matrix computation:** Enable an efficient workflow whereby vLLM developers can tweak an attention kernel to compute the custom attention bias on the fly
+  * For example: rather than computing the T5 relative position encoder bias matrix once, instead the attention kernel can fuse the element-wise bias matrix formula with the $Q K^T$ and $softmax()$. The attention bias matrix is never fully materialized.
+  * [FlexAttention](https://pytorch.org/blog/flexattention/#relative-position-encodings) enables fused custom attention bias computations in a FlashAttention-style kernel, using torch.compile.
+
+    <figure>
+      <p float="center">
+        <img src="img/flexattention.png" alt="FlexAttention with scoremod()" width="100%" style="margin-right:10px;" />
+      </p>
+      <figcaption style="text-align: center; margin-top: 10px;">
+        <small>
+        <strong>Figure 1:</strong> FlexAttention formula with `score_mod()` for fused custom attention bias computation (Image from <a href url="https://pytorch.org/blog/flexattention/#relative-position-encodings">FlexAttention webpage on pytorch.com</a>)
+        </small>
+      </figcaption>
+    </figure>
+
+It may make sense to support one or both of these methods.
+
+Note that custom attention bias support must be added on a backend-by-backend basis, because of the kernel modifications & backend logic changes required.
+
 #### Initial goals for introducing custom attention bias support
 
 1. Focus on a particular vLLM attention backend
@@ -279,16 +304,22 @@ In addition to lack of kernel-level support for custom attention bias, most vLLM
 
 ### Support CUDAGraph with encoder/decoder models
 
+Steps to support CUDAGraph with encoder/decoder models:
+* Scope out the effort require to support CUDAGraph with encoder/decoder graphs
+* Write a PR for CUDAGraph + encoder/decoder
+
 ### Support pipeline-parallelism with encoder/decoder models
 
-### Ensure full support for quantization with encoder/decoder models
-
-
+Steps to support pipeline-parallelism with encoder/decoder models:
+* Scope out the effort require to support pipeline-parallelism with encoder/decoder graphs
+* Write a PR for pipeline-parallelism + encoder/decoder
 
 ### Low-priority, high-effort tasks
 
 * Speculative decoding
 * Automatic prefix caching
+
+Here it is proposed that these features are low-priority. Adding support for speculative decoder and automatic prefix caching would require a significant of effort to scope out and design the implementations.
 
 ## Feedback period
 
