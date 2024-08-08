@@ -2,7 +2,7 @@
 
 First, review the vLLM project [guidelines](https://docs.vllm.ai/en/latest/models/adding_model.html) for adding a new decoder-only model.
 
-Each section heading below links to a corresponding section on the vLLM "Adding a new model" webpage, and the section body text discusses only the unique considerations for adding encoder/decoder models.
+Each section heading below links to a corresponding section on the vLLM "Adding a new model" webpage, and (with a few exceptions) the section body text discusses only the unique considerations for adding encoder/decoder models.
 
 Note: for encoder/decoder models, we port over the `<ModelName>ForConditionalGeneration` implementation rather than the `<ModelName>ForCausalLM` implementation.
 
@@ -13,6 +13,8 @@ Follow the instructions in the vLLM documentation.
 ## 1. [Bring your model code](https://docs.vllm.ai/en/latest/models/adding_model.html#bring-your-model-code)
 
 Follow the instructions in the vLLM documentation.
+
+Add a `.py` file for your model in `vllm/model_executor/models/`. The name of this file (without the `.py` extension) is the `module_name` you will use to [register your model](#5-register-your-model) later. For example, the BART model resides in `bart.py`.
 
 ## 2. [Rewrite the forward methods](https://docs.vllm.ai/en/latest/models/adding_model.html#rewrite-the-forward-methods)
 
@@ -52,49 +54,151 @@ The encoder/decoder `forward()` method signature differs slightly from decoder-o
 
 Of note, `input_ids` and `positions` are respectively the decoder input token ids and the decoder input positions, while `encoder_input_ids` and `encoder_positions` are as the name would suggestion the encoder inputs. 
 
+## 2.5 (Optional but strongly recommended) Implement the following encoder/decoder model architecture 
+
+(This section is not in the vLLM documentation.)
+
+* `<ModelName>ForConditionalGeneration`: top-level, task-specific model class
+    * Wraps `<ModelName>Model` & handles weight loading, logit processing & token sampling
+    * Members:
+        * `model`: `<ModelName>Model` instance
+        * `lm_head`: `ParallelLMHead` or subclass
+        * `logits_processor`
+        * `sampler`
+    * Methods other than `forward()`:
+        * `compute_logits()`
+        * `sample()`
+        * `load_weights()`
+    * The `forward()` function signature is discussed in the [previous section](#2-rewrite-the-forward-methods).
+
+* `<ModelName>Model`: core model class
+    * Encapsulates the encoder and decoder modules
+    * Members:
+        * `encoder`: <ModelName>Encoder instance
+        * `decoder`: <ModelName>Decoder instance
+    * The behavior of `<ModelName>Model.forward()` mirrors [Figure 1 in the encoder/decoder infrastructure guide](infra-enc-dec#encoderdecoder-architecture-diagram-prefill--and-decode-phase):
+        * **Prefill:**
+            * Invoke the encoder against the encoder input tokens/positions & obtain encoder output hidden states
+            * Invoke the decoder against the decoder input tokens/positions & the encoder output hidden states to obtain decoder output hidden states
+                * In the course of this step, each self-attention layer caches its KVs in its self-attention KV cache, and each cross-attention layer caches its KVs in its cross-attention KV cache.
+                * Caching is handled implicitly by the underlying vLLM `Attention` layers & should not be explicitly handled by your model implementation.
+            * Since cross-attention KVs are cached, discard the encoder output hidden states permanently
+        * **Decode:**
+            * Bypass the encoder entirely
+            * Invoke the decoder against the decoder input tokens/positions
+                * The underlying vLLM `Attention` layers in the decoder implicitly reuse the cached self-attention & cross-attention KVs
+                * The self-attention KVs corresponding to the last decoded token will be cached
+                * The cross-attention KV cache is read-only, since the encoder input sequence is static
+    * Example `forward()` function signature:
+
+        ```
+        def forward(self, input_ids: torch.Tensor, positions: torch.Tensor,
+                    encoder_input_ids: torch.Tensor,
+                    encoder_positions: torch.Tensor, kv_caches: List[torch.Tensor],
+                    attn_metadata: AttentionMetadata) -> torch.Tensor
+        ```
+
+* `<ModelName>Encoder` and `<ModelName>Decoder`: encoder and decoder classes
+    * The encoder and decoder have generally similar structures, although specific models may differentiate them in subtle ways. However, one difference is that the decoder consumes encoder output hidden states & passes them into each decoder layer.
+    * Members
+        * `cache_config`
+        * `quant_config`
+        * `embed_tokens`: encoder token embedding layer; `VocabParallelEmbedding` or subclass
+        * `embed_positions`: encoder position embedding layer; `VocabParallelEmbedding` or subclass
+        * `layers`: encoder layer stack
+        * Instances of any other layers such as `nn.LayerNorm` which are applied by the {encoder,decoder}
+    * A general outline of `<ModelName>Encoder.forward()` and `<ModelName>Decoder.forward()` behavior:
+        * Compute token & position embeddings
+        * Superimpose & normalize embeddings
+        * Evaluate the {encoder,decoder} layer stack against the normalized embeddings to obtain {encoder,decoder} output hidden states
+            * Only for decoder: pass encoder output hidden states to each decoder layer
+    * Example `forward()` function signature:
+        * Encoder:
+            ```
+            def forward(self, input_ids: torch.Tensor, positions: torch.Tensor,
+                        kv_caches: List[torch.Tensor],
+                        attn_metadata: AttentionMetadata) -> torch.Tensor
+            ```
+        * Decoder:
+            ```
+            # Compared to encoder, has additional `encoder_hidden_states` input
+            def forward(self, decoder_input_ids: torch.Tensor,
+                        decoder_positions: torch.Tensor,
+                        encoder_hidden_states: Optional[torch.Tensor],
+                        kv_caches: List[torch.Tensor],
+                        attn_metadata: AttentionMetadata) -> torch.Tensor:
+            ```
+
+* `<ModelName>EncoderLayer`: encoder layer class
+    * `<ModelName>EncoderLayer` corresponds to [any one of the gray boxes representing encoder layers in Figure 1 of the encoder/decoder infrastructure guide](infra-enc-dec#encoderdecoder-architecture-diagram-prefill--and-decode-phase)
+    * Members:
+        * `self_attn`: `<ModelName>EncoderAttention`
+        * `activation_fn`: vLLM MLP activation function
+        * `fc1` and `fc2`: MLP layers; `ColumnParallelLinear` and `RowParallelLinear` respectively
+        * Instances of any other layers such as `nn.LayerNorm` which are applied by the encoder layer
+    * Behavior of `<ModelName>EncoderLayer.forward()`:
+        * Apply encoder self-attention to previous encoder-layer output hidden states
+        * Apply MLP
+        * Also account for residuals, normalization, etc.
+    * Example `forward()` function signature:
+        ```
+        def forward(self, hidden_states: torch.Tensor, kv_cache: torch.Tensor,
+                    attn_metadata: AttentionMetadata) -> torch.Tensor
+        ```
+
+* `<ModelName>DecoderLayer`: decoder layer class
+    * Members:
+        * `self_attn`: `<ModelName>DecoderSelfAttention`
+        * `cross_attn` (or `encoder_attn` in BART): `<ModelName>CrossAttention`
+        * `activation_fn`: vLLM MLP activation function
+        * `fc1` and `fc2`: MLP layers; `ColumnParallelLinear` and `RowParallelLinear` respectively
+        * Instances of any other layers such as `nn.LayerNorm` which are applied once by the encoder
+    * The behavior of `<ModelName>DecoderLayer.forward()` mirrors [the blown-up decoder layer in Figure 1 of the encoder/decoder infrastructure guide](infra-enc-dec#encoderdecoder-architecture-diagram-prefill--and-decode-phase):
+        * Apply decoder self-attention to previous decoder-layer output hidden states
+        * Apply encoder/decoder cross-attention to self-attention output hidden states & encoder output hidden states
+        * Apply MLP
+        * Also account for residuals, normalization, etc.
+    * Example `forward()` function signature:
+        ```
+        def forward(
+            self,
+            decoder_hidden_states: torch.Tensor,
+            kv_cache: torch.Tensor,
+            attn_metadata: AttentionMetadata,
+            encoder_hidden_states: Optional[torch.Tensor] = None,
+        ) -> torch.Tensor
+        ```
+
+* `<ModelName>EncoderAttention`: wraps the QKV computation & attention backend invocation
+
 ## 3. [(Optional but strongly recommended) Implement tensor parallelism and quantization support](https://docs.vllm.ai/en/latest/models/adding_model.html#optional-implement-tensor-parallelism-and-quantization-support)
 
 Follow the instructions in the vLLM documentation.
 
-Cross-attention complicates the parallel GEMM computations against the $W_Q$, $W_K$, $W_V$ parameter matrices, [for reasons described in the encoder/decoder RFC](rfc.md#low-hanging-fruit-improve-cross-attention-parameter-matrix-parallelism); essentially the Q/K/V computation must operate on both previous-layer decoder hidden states and also encoder output hidden states. The same section of the RFC proposes a near-term workstream to address the issue. 
+Cross-attention complicates the parallel GEMM computations against the $W_Q$, $W_K$, $W_V$ parameter matrices, [for reasons described in the encoder/decoder RFC](rfc.md#low-hanging-fruit-improve-cross-attention-parameter-matrix-parallelism); essentially the Q/K/V computation must operate on both the previous-layer decoder hidden states and also encoder output hidden states. The same section of the RFC proposes a near-term workstream to address the issue. 
 
-In the mean time, the following workaround was imployed in BART to parallelize the Q/K/V computation:
+In the mean time, the following workaround was [employed in BART](https://github.com/vllm-project/vllm/blob/21b9c49aa37c7ba08590a99b0d4f15f86439c8f9/vllm/model_executor/models/bart.py#L359-L365) to parallelize the Q/K/V computation:
 
 ```
-    def forward(
-        self,
-        decoder_hidden_states: torch.Tensor,
-        kv_cache: torch.Tensor,
-        attn_metadata: AttentionMetadata,
-        encoder_hidden_states: Optional[torch.Tensor] = None,
-    ) -> torch.Tensor:
-        """Input shape: Batch x Time x Channel"""
-
-        # (afeldman-nm 2024/07/22) TODO:
-        # Need a more efficient solution for q/k/v
-        qkv_dec, _ = self.qkv_proj(decoder_hidden_states)
-        q, _, _ = qkv_dec.split([self.q_size, self.kv_size, self.kv_size],
-                                dim=-1)
-        if encoder_hidden_states is None:
-            k = None
-            v = None
-        else:
-            qkv_enc, _ = self.qkv_proj(encoder_hidden_states)
-            _, k, v = qkv_enc.split([self.q_size, self.kv_size, self.kv_size],
-                                    dim=-1)
-
-        attn_output = self.attn(q,
-                                k,
-                                v,
-                                kv_cache,
-                                attn_metadata,
-                                attn_type=AttentionType.ENCODER_DECODER)
-
-        output, _ = self.out_proj(attn_output)
-        return output
+# (afeldman-nm 2024/07/22) TODO:
+# Need a more efficient solution for q/k/v
+qkv_dec, _ = self.qkv_proj(decoder_hidden_states)
+q, _, _ = qkv_dec.split([self.q_size, self.kv_size, self.kv_size],
+                        dim=-1)
+if encoder_hidden_states is None:
+    k = None
+    v = None
+else:
+    qkv_enc, _ = self.qkv_proj(encoder_hidden_states)
+    _, k, v = qkv_enc.split([self.q_size, self.kv_size, self.kv_size],
+                            dim=-1)
 ```
 
 ## [4. Implement the weight loading logic](https://docs.vllm.ai/en/latest/models/adding_model.html#implement-the-weight-loading-logic)
+
+Follow the instructions in the vLLM documentation.
+
+Encoder/decoder weight loader logic belongs in `<ModelName>ForConditionalGeneration` (as opposed to `<ModelName>ForCausalLM`.) 
 
 ## [5. Register your model](https://docs.vllm.ai/en/latest/models/adding_model.html#register-your-model)
 

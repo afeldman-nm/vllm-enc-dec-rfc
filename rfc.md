@@ -320,40 +320,40 @@ Steps to support pipeline-parallelism with encoder/decoder models:
 
 Cross-attention complicates the parallel GEMM computations against the $W_Q$, $W_K$, $W_V$ parameter matrices: `QKVParallelLinear.forward()` is inherited from `ColumnParallelLinear.forward(input_)`, which takes only a single `input_` argument; however, [Figure 1 of the encoder/decoder architecture overview](infra-enc-dec.md#encoderdecoder-architecture-diagram-prefill--and-decode-phase) shows that cross-attention $W_Q$ operates on the prior self-attention output while $W_K$ and $W_V$ operate on the encoder hidden states. Furthermore, note that $W_K$ and $W_V$ are never utilized during decode because the encoder sequence is static; thus, cross-attention layers utilize all three matrices during prefill, but only $W_Q$ during decode.
 
-For the time being, BART utilizes [the following workaround](https://github.com/vllm-project/vllm/blob/21b9c49aa37c7ba08590a99b0d4f15f86439c8f9/vllm/model_executor/models/bart.py#L359-L375):
+For the time being, BART utilizes [the following workaround](https://github.com/vllm-project/vllm/blob/21b9c49aa37c7ba08590a99b0d4f15f86439c8f9/vllm/model_executor/models/bart.py#L359-L365):
 
 ```
-    def forward(
-        self,
-        decoder_hidden_states: torch.Tensor,
-        kv_cache: torch.Tensor,
-        attn_metadata: AttentionMetadata,
-        encoder_hidden_states: Optional[torch.Tensor] = None,
-    ) -> torch.Tensor:
-        """Input shape: Batch x Time x Channel"""
+def forward(
+    self,
+    decoder_hidden_states: torch.Tensor,
+    kv_cache: torch.Tensor,
+    attn_metadata: AttentionMetadata,
+    encoder_hidden_states: Optional[torch.Tensor] = None,
+) -> torch.Tensor:
+    """Input shape: Batch x Time x Channel"""
 
-        # (afeldman-nm 2024/07/22) TODO:
-        # Need a more efficient solution for q/k/v
-        qkv_dec, _ = self.qkv_proj(decoder_hidden_states)
-        q, _, _ = qkv_dec.split([self.q_size, self.kv_size, self.kv_size],
+    # (afeldman-nm 2024/07/22) TODO:
+    # Need a more efficient solution for q/k/v
+    qkv_dec, _ = self.qkv_proj(decoder_hidden_states)
+    q, _, _ = qkv_dec.split([self.q_size, self.kv_size, self.kv_size],
+                            dim=-1)
+    if encoder_hidden_states is None:
+        k = None
+        v = None
+    else:
+        qkv_enc, _ = self.qkv_proj(encoder_hidden_states)
+        _, k, v = qkv_enc.split([self.q_size, self.kv_size, self.kv_size],
                                 dim=-1)
-        if encoder_hidden_states is None:
-            k = None
-            v = None
-        else:
-            qkv_enc, _ = self.qkv_proj(encoder_hidden_states)
-            _, k, v = qkv_enc.split([self.q_size, self.kv_size, self.kv_size],
-                                    dim=-1)
 
-        attn_output = self.attn(q,
-                                k,
-                                v,
-                                kv_cache,
-                                attn_metadata,
-                                attn_type=AttentionType.ENCODER_DECODER)
+    attn_output = self.attn(q,
+                            k,
+                            v,
+                            kv_cache,
+                            attn_metadata,
+                            attn_type=AttentionType.ENCODER_DECODER)
 
-        output, _ = self.out_proj(attn_output)
-        return output
+    output, _ = self.out_proj(attn_output)
+    return output
 ```
 
 The downside is that this approach performs
