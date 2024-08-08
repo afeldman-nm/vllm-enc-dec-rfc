@@ -44,7 +44,7 @@ The encoder/decoder `forward()` method signature differs slightly from decoder-o
 +    ) -> torch.Tensor:
 ```
 
-Of note, `input_ids` and `positions` are respectively the decoder input token ids and the decoder input positions, while `encoder_input_ids` and `encoder_positions` are as the name would suggestion the encoder inputs.
+Of note, `input_ids` and `positions` are respectively the decoder input token ids and the decoder input positions, while `encoder_input_ids` and `encoder_positions` are as the name would suggestion the encoder inputs. 
 
 ## 3. (Optional but strongly recommended) Implement tensor parallelism and quantization support
 
