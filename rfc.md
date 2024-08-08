@@ -159,7 +159,7 @@ It may be helpful to review
 
 Generally speaking, in encoder/decoder models based on cross-attention, the non-text input modality is passed to the encoder as input. Conversely, any text prompt is typically passed to the decoder as a input prompt.
 
-The following two encoder/decoder multimodal prompt formats are tenatively proposed:
+The following two encoder/decoder multimodal prompt formats are tentatively proposed:
 
 * Singleton `TextPrompt` with `multi_modal_data` field
     * vLLM will extract the `multi_modal_data` and pass it to the encoder module
