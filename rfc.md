@@ -55,7 +55,7 @@ The support matrix below summarizes which features & encoder/decoder models will
     <td><strong><u>Yes</u></strong></td>
   </tr>
   <tr>
-    <td>Multi-modality</td>
+    <td>Multimodality</td>
     <td>No</td>
     <td><strong><u>Yes</u></strong></td>
   </tr>
@@ -120,15 +120,98 @@ Members of the vLLM contributor community identify models/features in the suppor
 
 ## Detailed long-term goals
 
+### Quantization
+
+Ensure that vLLM supports encoder/decoder models in combination with all existing vLLM quantization methods. 
+
+* Identify the list of quantization methods which vLLM currently supports with decoder-only models.
+* Add unit tests for encoder/decoder models with all of these quantization methods.
+* Determine which quantization methods are currently incompatible with vLLM encoder/decoder infrastructure.
+* Scope out the effort involved in making these quantization methods compatible & submit a PR making the change.
+
+vLLM encoder/decoder infrastructure should be compatible with most of the existing vLLM quantization methods, because the specialized quantization kernels are only employed for GEMM operations involving the learned weight matrices ($W_q$, $W_k$, etc.), whereas the encoder/decoder work really only modifies how the `Attention(q, k, v, kv_cache)` layer behaves & does not impact the learned weight matrices at all.
+
+However, vLLM encoder/decoder infrastructure *may* be incompatible with FP8. It does appear that a specialized quantized KV cache kernel is employed by the `Attention(q, k, v, kv_cache)` layer when FP8 quantization is employed.
+
+### Support encoder/decoder multimodality
+
+Technically, vLLM already supports multimodality for models which have an "encoder" and a "decoder", i.e. Llava. However, Llava's decoder does not utilize cross-attention & the model is basically compatible with vLLM's pre-existing decoder-only infrastructure.
+
+But critically, for **encoder/decoder models with cross-attention** such as Whisper vLLM does not currently support multimodality of any sort. The processing pipeline does not extract or utilize multimodal data from the input prompt, and the `EncoderDecoderModelRunner` has an assert which fails if the multimodal config is not `None`. Addressing this deficit is what is meant by "supporting encoder/decoder multimodality"
+
+Steps to extend existing vLLM multimodality support to encoder/decoder models:
+* Review [existing vLLM multimodality support](https://docs.vllm.ai/en/latest/dev/multimodal/adding_multimodal_plugin.html#adding-multimodal-plugin) and scope out a plan for adding encoder/decoder multimodality support.
+* Propose & implement one or more multimodal prompt formats for encoder/decoder models
+  * Support `multi_modal_data` field in vLLM encoder/decoder input prompts
+* Support multimodal data in encoder/decoder processing pipeline
+* Remove assertions which fail when multimodality is enabled
+* Add one or more unit tests with multimodal data & encoder/decoder models
+
+Proposal: it makes sense to implement encoder/decoder multimodality in the same PR as adding the [Whisper model.](#add-whisper-model)
+
+#### Proposed multimodal encoder/decoder prompt formats
+
+It may be helpful to review
+* [The non-multimodal encoder/decoder prompt formats which are currently supported by vLLM](infra-enc-dec.md#supported-encoderdecoder-prompt-formats).
+* [The encoder/decoder prompt formats currently supported by vLLM.](infra-enc-dec.md#supported-encoderdecoder-prompt-formats)
+
+Generally speaking, in encoder/decoder models based on cross-attention, the non-text input modality is passed to the encoder as input. Conversely, any text prompt is typically passed to the decoder as a input prompt.
+
+The following two encoder/decoder multimodal prompt formats are tenatively proposed:
+
+* Singleton `TextPrompt` with `multi_modal_data` field
+    * vLLM will extract the `multi_modal_data` and pass it to the encoder module
+    * vLLM will extract the prompt text, tokenize it and pass the token-list to the *decoder* (note that this is the opposite of vLLM behavior for non-multimodal prompts, where the prompt text would be passed to the encoder.)
+
+    For example passing the `TextPrompt` below to vLLM BART
+
+    ```
+    TextPrompt(
+        'prompt': "The rain in spain falls mainly on the",
+        'multi_modal_data': <multi modal data structure>
+    )
+    ```
+
+    results in
+
+    ```
+    Encoder input: <multi modal data structure>
+    Decoder prompt: "The rain in spain falls mainly on the"
+    ```
+
+* Singleton `TokensPrompt` with `multi_modal_data` field
+    * vLLM will extract the `multi_modal_data` and pass it to the encoder module
+    * vLLM will extract the token list and pass it unmodified to the *decoder* (note that this is the opposite of vLLM behavior for non-multimodal prompts, where the prompt tokens would be passed to the encoder.)
+
+    For example passing the `TokensPrompt` below to vLLM BART
+
+    ```
+    TokensPrompt(
+        'prompt_tokens': [2,0,171,5,2],
+        'multi_modal_data': <multi modal data structure>
+    )
+    ```
+
+    results in
+
+    ```
+    Encoder prompt: <multi modal data structure>
+    Decoder prompt: [2,0,171,5,2]
+    ```
+
+It may also be worth considering whether or how to support
+* `ExplicitEncoderDecoderPrompt`s with multimodality
+* An input prompt format which encapsulates *only* multimodal encoder inputs, with no associated decoder text/tokens prompt (this would result in the decoder being passed a "default" or empty prompt.)
+
 ### Add new models to vLLM
 
 Please review the [how-to guide for adding new models to vLLM](how-to.md#guide-to-adding-new-encoderdecoder-models-to-vllm)
 
 See `tests/models/test_bart.py` for an example of an encoder/decoder model unit test. See `tests/distributed/test_basic_distributed_correctness_enc_dec.py` for an example of an encoder/decoder model test with TP > 1.
 
-#### Add Whisper model & multi-modality
+#### Add Whisper model
 
-Steps to add support for Whisper [^1], a multi-modal encoder/decoder speech recognition model:
+Steps to add support for Whisper [^1], a multimodal encoder/decoder speech recognition model:
 * [Extend existing vLLM multimodality support to encoder/decoder models](#support-encoderdecoder-multimodality)
 * Extend existing vLLM prompt processing pipeline to support audio
 * Port HuggingFace Whisper model [^2] to vLLM; an existing open PR for this workstream can be found here [^3]
@@ -152,15 +235,6 @@ Steps to add support for the T5 model [^4]:
 
 * Variants of aforementioned models (BART, T5, Whisper)
 * CogAgent
-
-### Support encoder/decoder multimodality
-
-Extend existing vLLM multimodality support to encoder/decoder models.
-* Support `multi_modal_data` field in vLLM encoder/decoder input prompts
-* Support multi-modal data in encoder/decoder processing pipeline
-* Add one or more unit tests with multi-modal data & encoder/decoder models
-
-Proposal: it makes sense to implement encoder/decoder multimodality in the same PR as adding the [Whisper model.](#add-whisper-model--multi-modality)
 
 ### Support custom attention bias
 
