@@ -337,4 +337,4 @@ As an example, the [latest vLLM BART model integration may be found here](https:
 
 Some encoder/decoder models depend on other vLLM encoder/decoder workstreams:
 * Multimodal encoder/decoder models with cross-attention, such as [Whisper](https://github.com/vllm-project/vllm/issues/7366#add-whisper-model), depend on [vLLM support for multimodal encoder/decoder models](https://github.com/vllm-project/vllm/issues/7366#support-encoderdecoder-multimodality).
-* Models which rely on custom attention bias - as is the case for T5 - depend on [vLLM support for custom attention bias](https://github.com/vllm-project/vllm/issues/7366#support-custom-attention-bias).
+* Models which rely on custom attention bias - as is the case for [T5](https://github.com/vllm-project/vllm/issues/7366#add-t5-model) - depend on [vLLM support for custom attention bias](https://github.com/vllm-project/vllm/issues/7366#support-custom-attention-bias).
