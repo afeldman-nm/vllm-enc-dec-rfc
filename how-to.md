@@ -62,6 +62,8 @@ Of note, `input_ids` and `positions` are the decoder input token ids and positio
 
 This section proposes a general encoder/decoder model architecture, starting with the top-level task-specific model class and proceeding hierarchically downward to the `Attention` layers.
 
+This summary is at a high level of abstraction, so details like normalization, residuals, etc. are glossed over (and tend to be very model-specific anyway.)
+
 ### `<ModelName>ForConditionalGeneration`: top-level, task-specific model class
 
 * Wraps `<ModelName>Model` & handles weight loading, logit processing & token sampling
@@ -116,7 +118,7 @@ This section proposes a general encoder/decoder model architecture, starting wit
     * Instances of any other layers such as `nn.LayerNorm`
 * A general outline of `<ModelName>Encoder.forward()` and `<ModelName>Decoder.forward()` behavior:
     * Compute token & position embeddings
-    * Evaluate the {encoder,decoder} layer stack against the normalized embeddings to obtain {encoder,decoder} output hidden states
+    * Evaluate the {encoder,decoder} layer stack against the embeddings to obtain {encoder,decoder} output hidden states
         * Only for decoder: pass encoder output hidden states to each decoder layer
     * Also account for normalization, etc.
 * Example `forward()` function signature:
