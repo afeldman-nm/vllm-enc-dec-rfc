@@ -213,14 +213,14 @@ The block manager contains two internal block table representations
 
 #### Allocate
 
-* The block manager is managing $total\ num\ gpu\ blocks$ GPU memory blocks and $total\ num\ cpu\ blocks$ CPU memory blocks
+* The block manager is managing ($total\ num\ gpu\ blocks$) GPU memory blocks and ($total\ num\ cpu\ blocks$) CPU memory blocks
 * `block_man.allocate(seq_group)` provisions:
   * One self-attention KV cache for each decoder sequence in the `SequenceGroup`
   * One KV cache for cross-attention, with the number of token slots equal to the length of the `SequenceGroup`'s encoder sequence.
   * Allocation yields a block table for the cross-attention KV cache & one block table for each self-attention KV cache
   * **Total # of blocks:**
 
-    $$(seq\ group\ blocks) = |cross\ attn\ blocktable| + \sum_{i}^{num\ seqs}{|seq_{i}\ decoder\ self\ attn\ block\ table|}$$
+    $$(seq\ group\ blocks) = |(cross\ attn\ blocktable)| + \sum_{i}^{num\ seqs}{|(seq_{i}\ decoder\ self\ attn\ block\ table)|}$$
   * After allocation,
 
     $$(free\ gpu\ blocks\ after\ alloc) = (free\ gpu\ blocks) - (seq\ group\ blocks)$$
@@ -244,14 +244,14 @@ The block manager contains two internal block table representations
 * `block_man.free(seq)` frees the self-attention KV cache blocks associated with the `Sequence` argument passed in.
   * After `free()`,
   
-    $$free\ device\ blocks\ after\ free = free\ device\ blocks\ + |seq_{i}\ decoder\ self\ attn\ block\ table|$$
+    $$(free\ device\ blocks\ after\ free) = (free\ device\ blocks)\ + |(seq_{i}\ decoder\ self\ attn\ block\ table)|$$
 
     where $device$ is whichever of $\{CPU,GPU\}$ the `SequenceGroup` currently resides in, and $i$ is the `Sequence` id
 
 * `block_man.free_cross(seq_group)` frees the cross-attention KV cache blocks associated with the `SequenceGroup` argument passed in.
   * After `free_cross()`,
 
-    $$free\ device\ blocks\ after\ free\ cross = free\ device\ blocks\ + |cross\ attn\ blocktable|$$
+    $$(free\ device\ blocks\ after\ free\ cross) = (free\ device\ blocks)\ + |(cross\ attn\ blocktable)|$$
 
     where $device$ is whichever of $\{CPU,GPU\}$ the `SequenceGroup` currently resides in.
 
