@@ -229,7 +229,7 @@ Note: for more context on the non-causal and causal attention masks described in
         ```
 
 * `<ModelName>CrossAttention`
-    * The QKV computation here is inefficient pending [the RFC workstream to improve the efficiency of the parallel cross-attention QKV computation](https://github.com/vllm-project/vllm/issues/7366#low-hanging-fruit-improve-efficiency-of-the-parallel-cross-attention-qkv-computation).
+    * The QKV computation here is currently inefficient, for reasons described [later](#parallelizing-cross-attention----parameter-matrices). Addressing this is a near-term workstream.
     * Members
         * `qkv_proj`: $[W_Q W_K W_V]$ as `QKVParallelLinear` instance
         * `attn`: `Attention` instance
@@ -267,9 +267,11 @@ Recall that vLLM parallelizes QKV computation & `Attention.forward()` along the 
 
 ### Parallelizing cross-attention $W_Q$ $W_K$ $W_V$ parameter matrices
 
-Cross-attention complicates the parallel GEMM computations against the $W_Q$, $W_K$, $W_V$ parameter matrices, [for reasons described in the encoder/decoder RFC](https://github.com/vllm-project/vllm/issues/7366#low-hanging-fruit-improve-efficiency-of-the-parallel-cross-attention-qkv-computation): the Q/K/V computation must operate on both the previous-layer decoder hidden states and also encoder output hidden states; however, `QKVParallelLinear.forward()` is designed to operate on only a single input.
+Cross-attention complicates the parallel GEMM computations against the $W_Q$, $W_K$, $W_V$ parameter matrices, because the Q/K/V computation must operate on both the previous-layer decoder hidden states and also encoder output hidden states; however, `QKVParallelLinear.forward()` is designed to operate on only a single input.
 
-In the mean time, the following workaround was [employed in BART](https://github.com/vllm-project/vllm/blob/21b9c49aa37c7ba08590a99b0d4f15f86439c8f9/vllm/model_executor/models/bart.py#L359-L365) to parallelize the Q/K/V computation:
+A near-term goal is to add a `CrossAttentionQKVParallelLinear` class which supports two inputs.
+
+Until that fix becomes available, the following workaround was [employed in BART](https://github.com/vllm-project/vllm/blob/21b9c49aa37c7ba08590a99b0d4f15f86439c8f9/vllm/model_executor/models/bart.py#L359-L365) to parallelize the Q/K/V computation:
 
 ```
 # (afeldman-nm 2024/07/22) TODO:
