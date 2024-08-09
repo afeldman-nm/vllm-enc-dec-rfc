@@ -1,28 +1,28 @@
 # [RFC] Encoder/decoder models & feature compatibility
 
-tl;dr With Encoder/decoder model support landing soon, the next steps are to (1) add support for frequently-requested models (T5, Whisper, ...) and (2) increase the number of pre-existing vLLM features (quantization, CUDAGraph, pipeline parallelism, all attn backends, ...) which are compatible with encoder/decoder models. The ask for the vLLM contributor community is to help with this process.
+tl;dr Now that encoder/decoder model support has landed in vLLM, the next steps are to (1) add support for frequently-requested models (T5, Whisper, ...) and (2) increase the number of pre-existing vLLM features (quantization, CUDAGraph, pipeline parallelism, all attn backends, ...) which are compatible with encoder/decoder models. The ask for the vLLM contributor community is to help with this process.
 
 ## Motivation
 
-There is significant interest in vLLM supporting encoder/decoder models. [Issues 187](https://github.com/vllm-project/vllm/issues/187) and [180](https://github.com/vllm-project/vllm/issues/180), for example, request encoder/decoder model support. As a result encoder/decoder support was introduced to vLLM via the following three PRs:
+There is significant interest in vLLM supporting encoder/decoder models. [Issues 187](https://github.com/vllm-project/vllm/issues/187) and [180](https://github.com/vllm-project/vllm/issues/180), for example, request encoder/decoder model support. As a result encoder/decoder support was recently introduced to vLLM via the following three PRs:
 
 * **(Merged)** [[Core] Cross-attention KV caching and memory-management](https://github.com/vllm-project/vllm/pull/4837)
 * **(Merged)** [[Kernel] Correctly invoke prefill & decode kernels for cross-attention](https://github.com/vllm-project/vllm/pull/4888)
 * **(Merged)** [[Core] Subclass ModelRunner to support cross-attention & encoder sequences](https://github.com/vllm-project/vllm/pull/4942)
 
-These three PRs make encoder/decoder model inference possible, but leave more to be desired in terms of feature compatibility with encoder/decoder & the number of encoder/decoder models which are supported.
+These three PRs make encoder/decoder model inference possible; however, they leave more to be desired in terms of (1) parity between vLLM's decoder-only & encoder/decoder request processing pipelines, in terms of which features are supported, and (2) the number of encoder/decoder models which are supported.
 
-The ask for the vLLM contributor community is to help bring vLLM encoder/decoder model support to a similar level of maturity as that of decoder-only models, by contributing PRs which fill gaps in vLLM encoder/decoder model and feature support.
+The ask for the vLLM community is to contribute PRs which help bring vLLM encoder/decoder model support to a similar level of maturity as that of decoder-only models.
 
 ## Proposed changes
 
-The support matrix below summarizes which features & encoder/decoder models will be supported initially (by the three PRs mentioned above), versus which features & models will require community support to implement in the long term:
+The support matrix below summarizes which encoder/decoder models have already been added & which features are currently compatible with the vLLM encoder/decoder pipeline, versus which features & models will require additional PRs to implement in the long-term:
 
 <table>
   <tr>
     <th>Model/feature</th>
-    <th>Initially supported with encoder/decoder models?</th>
-    <th>Is supporting this feature a long-term goal?</th>
+    <th>Model is already available/feature is already compatible with encoder-decoder?</th>
+    <th>Having this model/making this feature compatible is a long-term goal?</th>
   </tr>
   <tr>
     <td>Encoder/decoder infrastructure</td>
@@ -108,6 +108,8 @@ The support matrix below summarizes which features & encoder/decoder models will
 
 This RFC gives an overview of those features & models which **will not be compatible with encoder/decoder initially, but which should be made compatible eventually** (i.e. **No** in the 2nd column, **Yes** in the third column in the support matrix.)
 
+Note that there are features (automatic prefix caching/sliding window/chunked prefill/LoRA) which are not long-term compatibility goals.
+
 ## Background
 
 Before continuing, it will be helpful to review [the details of the new vLLM encoder/decoder infrastructure](https://github.com/afeldman-nm/vllm-enc-dec-rfc/blob/main/infra-enc-dec.md). 
@@ -120,11 +122,11 @@ Members of the vLLM contributor community identify models/features in the suppor
 
 ## Detailed long-term goals
 
-Note: to make these features compatible with encoder/decoder, you will need to remove asserts which currently fail if these features are enabled for encoder/decoder models. Most of these assertions are implemented in `assert_enc_dec_mr_supported_scenario()` which can be found [here](https://github.com/vllm-project/vllm/blob/6dffa4b0a6120159ef2fe44d695a46817aff65bc/vllm/worker/utils.py#L9-L56).
-
 ### Quantization
 
-Ensure that vLLM supports encoder/decoder models in combination with all existing vLLM quantization methods. 
+The goal of this workstream is to make sure that quantization + encoder/decoder models is fully-tested, and to fill in any gaps (should they exist) in vLLM's support for quantized encoder/decoder models.
+
+Steps to ensure that vLLM supports encoder/decoder models in combination with all existing vLLM quantization methods:
 
 * Identify the list of quantization methods which vLLM currently supports with decoder-only models.
 * Add unit tests for encoder/decoder models with all of these quantization methods.
@@ -139,23 +141,31 @@ However, vLLM encoder/decoder infrastructure *may* be incompatible with FP8. It 
 
 Technically, vLLM already supports multimodality for models which have an "encoder" and a "decoder", i.e. Llava. However, Llava's decoder does not utilize cross-attention & the model is basically compatible with vLLM's pre-existing decoder-only infrastructure.
 
-But critically, for **encoder/decoder models with cross-attention** such as Whisper vLLM does not currently support multimodality of any sort. The processing pipeline does not extract or utilize multimodal data from the input prompt, and the `EncoderDecoderModelRunner` has an assert which fails if the multimodal config is not `None`. Addressing this deficit is what is meant by "supporting encoder/decoder multimodality"
+But critically, for **encoder/decoder models with cross-attention** such as Whisper vLLM does not currently support multimodality of any sort. The processing pipeline does not extract or utilize multimodal data from the input prompt, and the `EncoderDecoderModelRunner` has an assert which fails if the multimodal config is not `None`. Addressing this is what is meant by "supporting encoder/decoder multimodality".
 
 Steps to extend existing vLLM multimodality support to encoder/decoder models:
-* Review [existing vLLM multimodality support](https://docs.vllm.ai/en/latest/dev/multimodal/adding_multimodal_plugin.html#adding-multimodal-plugin) and scope out a plan for adding encoder/decoder multimodality support.
+* Review [existing vLLM multimodality support in the decoder-only pipeline](https://docs.vllm.ai/en/latest/dev/multimodal/adding_multimodal_plugin.html#adding-multimodal-plugin)
+* Scope out a plan for adding encoder/decoder multimodality support.
 * Propose & implement one or more multimodal prompt formats for encoder/decoder models
-  * Support `multi_modal_data` field in vLLM encoder/decoder input prompts
-* Support multimodal data in encoder/decoder processing pipeline
-* Remove assertions which fail when multimodality is enabled
-* Add one or more unit tests with multimodal data & encoder/decoder models
+* Integrate multimodality support into encoder/decoder processing pipeline
+* Remove the assertion which fails when multimodality is enabled for an encoder/decoder model (see `assert_enc_dec_mr_supported_scenario()` in `vllm/worker/utils.py`)
+* Add one or more unit tests with multimodal data
 
-Proposal: it makes sense to implement encoder/decoder multimodality in the same PR as adding the [Whisper model.](#add-whisper-model)
+There are a number of multimodal encoder/decoder models which will benefit from this feature. One possibility is to add multimodality support & a multimodal model such as [Whisper](#add-whisper-model) in the same PR, so that Whisper may be used to facilitate an end-to-end test with multimodality.
 
-#### Proposed multimodal encoder/decoder prompt formats
+Another possibility is to implement multimodality support in its own PR.
+
+#### Considerations for designing multimodal encoder/decoder prompt formats
+
+In designing the vLLM prompt formats for multimodal encoder/decoder models, one approach is to ask what we want the user experience to be for the particular high-priority multimodality encoder/decoder models which users are asking for, such as
+* [Whisper](#add-whisper-model)
+* [Llama 3.1 multimodal](https://github.com/vllm-project/vllm/pull/7258#discussion_r1710915145)
+
+#### Initial proposal for multimodal encoder/decoder prompt formats
 
 It may be helpful to review
-* [The non-multimodal encoder/decoder prompt formats which are currently supported by vLLM](https://github.com/afeldman-nm/vllm-enc-dec-rfc/blob/main/infra-enc-dec.md#supported-encoderdecoder-prompt-formats).
-* [The encoder/decoder prompt formats currently supported by vLLM.](https://github.com/afeldman-nm/vllm-enc-dec-rfc/blob/main/infra-enc-dec.md#supported-encoderdecoder-prompt-formats)
+* [The non-multimodal encoder/decoder prompt formats which are currently supported by vLLM](https://github.com/afeldman-nm/vllm-enc-dec-rfc/blob/main/infra-enc-dec.md#supported-encoderdecoder-prompt-formats): singleton prompts (raw text prompt, `TextPrompt`, `TokensPrompt`) as well as `ExplicitEncoderDecoder` prompts
+* The multimodal decoder-only prompt formats which are currently supported by vLLM; search for `multi_modal_data` [here](https://github.com/vllm-project/vllm/blob/main/vllm/inputs/data.py) and also the [vLLM documentation on multimodality](https://docs.vllm.ai/en/latest/dev/multimodal/multimodal_index.html)
 
 Generally speaking, in encoder/decoder models based on cross-attention, the non-text input modality is passed to the encoder as input. Conversely, any text prompt is typically passed to the decoder as a input prompt.
 
@@ -302,17 +312,22 @@ Note that custom attention bias support must be added on a backend-by-backend ba
 
 ### Add support for encoder attention and cross-attention to additional backends
 
+* Remove/modify any asserts which fail if the vLLM attention backend is not XFormers
+  * Currently, [the `__init__()` method of `EncoderDecoderModelRunner`](https://github.com/vllm-project/vllm/blob/b4e9528f9569d6eb8c29624771a4058fe794cb5a/vllm/worker/enc_dec_model_runner.py#L95) invokes a method `EncoderDecoderModelRunner._maybe_force_supported_attention_backend()` [here](https://github.com/vllm-project/vllm/blob/b4e9528f9569d6eb8c29624771a4058fe794cb5a/vllm/worker/enc_dec_model_runner.py#L112-L144) which (1) attempts to force encoder/decoder models to use XFormers attention backend, and (2) raises an exception if the user has overridden the attention backend to be anything other than XFormers. 
+
 ### Support CUDAGraph with encoder/decoder models
 
 Steps to support CUDAGraph with encoder/decoder models:
 * Scope out the effort require to support CUDAGraph with encoder/decoder graphs
 * Write a PR for CUDAGraph + encoder/decoder
+  * Remove the assertion which fails when CUDAGraph is enabled for an encoder/decoder model (see `assert_enc_dec_mr_supported_scenario()` in `vllm/worker/utils.py`)
 
 ### Support pipeline-parallelism with encoder/decoder models
 
 Steps to support pipeline-parallelism with encoder/decoder models:
 * Scope out the effort require to support pipeline-parallelism with encoder/decoder graphs
 * Write a PR for pipeline-parallelism + encoder/decoder
+  * Remove the assertion which fails when pipeline-parallelism is enabled for an encoder/decoder model (see `assert_enc_dec_mr_supported_scenario()` in `vllm/worker/utils.py`)
 
 ### Additional tasks
 
@@ -376,7 +391,7 @@ Note that self-attention layers within an encoder/decoder model are not impacted
 
 Here it is proposed that these features are low-priority. Adding support for speculative decoder and automatic prefix caching would require a significant of effort to scope out and design the implementations.
 
-## Additional proposed tasks
+Note that adding support for either of these features would require removing the assertions which fail when speculative decoding or automatic prefix caching are enabled for an encoder/decoder model (see `assert_enc_dec_mr_supported_scenario()` in `vllm/worker/utils.py`)
 
 ## Feedback period
 
