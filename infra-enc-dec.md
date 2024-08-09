@@ -307,7 +307,7 @@ attn(Q,K,V,A) = softmax(\frac{Q K^T + A}{\sqrt{d}})V
 $$
 
 
-Currently, vLLM does not support *arbitrary* $A$ matrices (this is the focus of the [custom attention bias](https://github.com/vllm-project/vllm/issues/7366#support-custom-attention-bias) workstream.) However, all vLLM attention backends support explicit (XFormers via `AttentionBias` class) or implicit (Flash-attention, Flashinfer via the sequence start location argument) configuration of a block-diagonal attention mask in which all elements outside of the diagonal blocks are $-\infty$.
+Currently, vLLM does not support passing *arbitrary fully-materialized* $A$ matrices into the attention backends (this is the focus of the [custom attention bias](https://github.com/vllm-project/vllm/issues/7366#support-custom-attention-bias) workstream.) However, all vLLM attention backends support explicit (XFormers via `AttentionBias` class) or implicit (Flash-attention, Flashinfer via the sequence start location argument) configuration of a block-diagonal attention mask in which all elements outside of the diagonal blocks are $-\infty$.
 
 However, at time of writing, XFormers is the only backend in which the block-diagonal attention mask is configurable to support
 * Non-causal encoder attention/cross-attention
