@@ -236,7 +236,7 @@ This section proposes a general encoder/decoder model architecture, starting wit
         * Compute $K_{enc}$ and $V_{enc}$
             * **Prefill:** compute $[Q_{enc} K_{enc} V_{enc}] = x [W_Q W_K W_V]$ using `qkv_proj(encoder_hidden_states)`; discard $Q_{enc}$
             * **Decode:** $K_{enc} = V_{enc} =$ `None`
-        * Invoke `Attention` backend against $Q_{dec}$,$K_{enc}$,$V_{enc}$, passing in `attn_type=AttentionType.ENCODER_DECODER`
+        * Invoke `Attention` backend against $Q_{dec}$ , $K_{enc}$ , $V_{enc}$ , passing in `attn_type=AttentionType.ENCODER_DECODER`
             * `attn_type=AttentionType.ENCODER_DECODER` causes `Attention` to
                 * utilize `attn_metadata.seq_lens` as a reference for the sequence lengths of the corresponding decoder hidden states, and `attn_metadata.encoder_seq_lens` as a reference for the sequence lengths of the corresponding encoder hidden states
                 * Construct a non-causal attention mask, where each diagonal block is a rectangular matrix with dimensions (decoder seq len) $\times$ (encoder seq len)
