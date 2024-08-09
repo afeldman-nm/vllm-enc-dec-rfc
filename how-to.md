@@ -52,11 +52,13 @@ The encoder/decoder `forward()` method signature differs slightly from decoder-o
 +    ) -> torch.Tensor:
 ```
 
-Of note, `input_ids` and `positions` are respectively the decoder input token ids and the decoder input positions, while `encoder_input_ids` and `encoder_positions` are as the name would suggestion the encoder inputs. 
+Of note, `input_ids` and `positions` are the decoder input token ids and positions, respectively, while `encoder_input_ids` and `encoder_positions` the corresponding encoder inputs. 
 
 ## 2.5 (Optional but strongly recommended) Implement the following encoder/decoder model architecture 
 
 (This section is not in the vLLM documentation.)
+
+This section proposes a general encoder/decoder model architecture, starting with the top-level task-specific model class and proceeding hierarchically downward to the `Attention` layers.
 
 ### `<ModelName>ForConditionalGeneration`: top-level, task-specific model class
 
@@ -106,10 +108,10 @@ Of note, `input_ids` and `positions` are respectively the decoder input token id
 * Members
     * `cache_config`
     * `quant_config`
-    * `embed_tokens`: encoder token embedding layer; `VocabParallelEmbedding` or subclass
-    * `embed_positions`: encoder position embedding layer; `VocabParallelEmbedding` or subclass
-    * `layers`: encoder layer stack
-    * Instances of any other layers such as `nn.LayerNorm` which are applied by the {encoder,decoder}
+    * `embed_tokens`: token embedding layer; instance of `VocabParallelEmbedding` or subclass
+    * `embed_positions`: position embedding layer; instance of `VocabParallelEmbedding` or subclass
+    * `layers`: {encoder,decoder} layer stack
+    * Instances of any other layers such as `nn.LayerNorm`
 * A general outline of `<ModelName>Encoder.forward()` and `<ModelName>Decoder.forward()` behavior:
     * Compute token & position embeddings
     * Evaluate the {encoder,decoder} layer stack against the normalized embeddings to obtain {encoder,decoder} output hidden states
@@ -211,7 +213,7 @@ Of note, `input_ids` and `positions` are respectively the decoder input token id
             * `attn_type=AttentionType.DECODER` causes `Attention` to
                 * utilize `attn_metadata.seq_lens` as a reference for the sequence lengths of the decoder input
                 * Construct a causal attention mask, where each diagonal block is a square matrix equal in side-length to the sequence length of the corresponding decoder hidden states
-                * Cache self-attention KVs
+                * Cache self-attention KVs during prefill; cache new KVs & reuse old ones during decode
         * Apply $W_O$ to attention output using `out_proj`, yielding result
     * Example `forward()` function signature:
 
@@ -238,7 +240,7 @@ Of note, `input_ids` and `positions` are respectively the decoder input token id
             * `attn_type=AttentionType.ENCODER_DECODER` causes `Attention` to
                 * utilize `attn_metadata.seq_lens` as a reference for the sequence lengths of the corresponding decoder hidden states, and `attn_metadata.encoder_seq_lens` as a reference for the sequence lengths of the corresponding encoder hidden states
                 * Construct a non-causal attention mask, where each diagonal block is a rectangular matrix with dimensions (decoder seq len) $\times$ (encoder seq len)
-                * Cache cross-attention KVs
+                * Cache cross-attention KVs during prefill; reuse old KVs during decode
     * Example `forward()` function signature:
 
         ```
