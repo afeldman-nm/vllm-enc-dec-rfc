@@ -31,9 +31,6 @@ Figure 1, which reviews the generalized architecture of encoder/decoder models, 
     * In addition to the pre-existing vLLM "decoder self-attention" KV caches and associated block tables, the vLLM scheduler must now construct an "encoder/decoder cross-attention KV cache" and associated block table for each `SequenceGroupMetadata`.
     * The block manager - orchestrated by the scheduler - must correctly allocate, free and swap cross-attention KV cache.
     * The model runner must pass cross-attention block tables and slot mappings as input to models. The `AttentionMetadata` structure must include additional fields related to encoder sequences & cross-attention memory-mapping.
-* The implementation of encoder/decoder models has additional considerations:
-    * In addition to decoder inputs, models must also accept encoder input token & position vectors
-    * Models must incorporate layers for encoder inference, decoder self-attention, and encoder/decoder cross-attention, utilizing the encoder input token/position vectors as well as the encoder- and cross-attention-oriented `AttentionMetadata` fields constructed by the model runner.
 * Finally, the attention backends must support encoder attention, decoder self-attention, and encoder/decoder cross-attention. At time of writing only XFormers attention backend supports all of these capabilities.
 
 The following sections will add more detail. It may be helpful to review [the official vLLM input process pipeline doc](https://docs.vllm.ai/en/latest/dev/input_processing/input_processing_pipeline.html#input-processing-pipeline) before continuing.
