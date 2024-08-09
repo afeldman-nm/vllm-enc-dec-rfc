@@ -22,7 +22,7 @@ This document overviews the vLLM request-processing pipeline for encoder/decoder
 
 ---
 
-Figure 1, which reviews the generalized architecture of encoder/decoder models, clarifies the key features of encoder/decoder models which complicate the vLLM processing pipeline:
+Figure 1, which reviews the generalized architecture of encoder/decoder models, clarifies why encoder/decoder models place additional requirements on the vLLM processing pipeline compare to decoder-only models:
 
 * Both the encoder and decoder modules accept input prompts (Figure 1.) This means that, upon receiving a user request, vLLM must be able to either extract or infer both an encoder input prompt and a decoder input prompt.
     * At the other end, the request output - in order to be sensible to a human reader - must include the encoder & decoder input prompts as well as the decoded tokens.
