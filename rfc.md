@@ -157,9 +157,9 @@ Another possibility is to implement multimodality support in its own PR.
 
 #### Considerations for designing multimodal encoder/decoder prompt formats
 
-In designing the vLLM prompt formats for multimodal encoder/decoder models, one approach is to ask what we want the user experience to be for the particular high-priority multimodality encoder/decoder models which users are asking for, such as
-* [Whisper](#add-whisper-model)
+One approach to designing the vLLM multimodal encoder/decoder prompt formats, is to consider what we want the user experience to be for high-priority multimodal encoder/decoder models such as
 * [Llama 3.1 multimodal](https://github.com/vllm-project/vllm/pull/7258#discussion_r1710915145)
+* [Whisper](#add-whisper-model)
 
 #### Initial proposal for multimodal encoder/decoder prompt formats
 
