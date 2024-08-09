@@ -1,5 +1,7 @@
 # vLLM encoder/decoder infrastructure overview
 
+**Note:** use `Right-click > Open in new tab` to open links in this file
+
 This document overviews the vLLM request-processing pipeline for encoder/decoder models, highlighting those aspects which differ from vLLM's decoder-only pipeline.
 
 ---
