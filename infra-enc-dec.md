@@ -274,13 +274,13 @@ The block manager contains two internal block table representations
 
 Generally speaking, `ModelRunner` and its subclasses consume the `SequenceGroupMetadata` instances constructed by the `Scheduler`. 
 
-For decoder-only models, `ModelRuner` utilizes this `seq_group_metadata_list` is utilized to
+For decoder-only models, `ModelRunner` utilizes these `SequenceGroupMetadata` instances to:
 * Construct the decoder input tokens/positions
 * Build the decoder self-attention slot-mappings data structure
 * Compute the decoder sequence lengths, token-counts, etc.
 * Construct an `AttentionMetadata` instance
 
-For encoder/decoder models, `EncoderDecoderModelRunner` prepares all of the same decoder-oriented model inputs, but additionally constructs
+For encoder/decoder models, `EncoderDecoderModelRunner` prepares all of the same decoder-oriented model inputs, but additionally constructs:
 * The encoder input tokens/positions
 * The encoder/decoder cross-attention slot-mappings data structure
 * The encoder sequence lengths, token-counts, etc.
