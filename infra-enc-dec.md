@@ -220,7 +220,7 @@ The block manager contains two internal block table representations
   * Allocation yields a block table for the cross-attention KV cache & one block table for each self-attention KV cache
   * **Total # of blocks:**
 
-    $$(seq\; group\; blocks) = |cross\; attn\; blocktable| + \sum_{i}^{num\; seqs}{|seq_{i}\; decoder\; self\; attn\; block\; table|}$$
+    $$(seq\ group\ blocks) = |cross\; attn\; blocktable| + \sum_{i}^{num\; seqs}{|seq_{i}\; decoder\; self\; attn\; block\; table|}$$
   * After allocation,
 
     $$(free\; gpu\; blocks\; after\; alloc) = (free\; gpu\; blocks) - (seq\; group\; blocks)$$
