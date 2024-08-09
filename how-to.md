@@ -261,6 +261,31 @@ Note: for more context on the non-causal and causal attention masks described in
         ) -> torch.Tensor
         ```
 
+## 2.6 (If necessary) adjust `LLMEngine` default decoder prompt & decoder prompt preprocessing
+
+(There is not a corresponding section in the vLLM documentation.)
+
+As described at the end of [this section](https://github.com/afeldman-nm/vllm-enc-dec-rfc/blob/main/infra-enc-dec.md#supported-encoderdecoder-prompt-formats), vLLM `LLMEngine` emulates the default behavior of HuggingFace transformers `GenerationMixin` when preprocessing decoder prompts for encoder/decoder models.
+
+If the default behavior is not appropriate for your model, you add special cases to `LLMEngine` to correctly handle decoder prompts for your model.
+
+### Decoder prompt preprocessing
+
+By default, `LLMEngine._prepare_decoder_input_ids_for_generation(decoder_input_ids)` will prepend `<DEC>` (decoder start token) to the beginning of the decoder prompt token list. However if the decoder prompt token list already begins with `<DEC>` then nothing is changed.
+
+If this behavior is not appropriate for your model, you can modify [`LLMEngine._prepare_decoder_input_ids_for_generation(decoder_input_ids)`](https://github.com/vllm-project/vllm/blob/70d268a39947a8ea950f871f9345aad21f09715e/vllm/engine/llm_engine.py#L626) in order to implement the appropriate decoder prompt preprocessing for your model.
+
+### Default decoder prompt
+
+Currently, the default vLLM decoder prompt is `<DEC><BOS>` where `<DEC>` is the decoder start token.
+
+Here is how the default decoder prompt is implemented:
+* If a request contains a `None` decoder prompt, `LLMEngine._get_default_enc_dec_decoder_prompt()` replaces the decoder prompt with `<BOS>`
+* Next, `LLMEngine._prepare_decoder_input_ids_for_generation(decoder_input_ids)` detects that `<DEC>` is absent from the decoder prompt & prepends `<DEC>`
+* This results in `<DEC><BOS>`
+
+You can modify the default decoder prompt my modifying [`LLMEngine._get_default_enc_dec_decoder_prompt()`](https://github.com/vllm-project/vllm/blob/70d268a39947a8ea950f871f9345aad21f09715e/vllm/engine/llm_engine.py#L752) and [`LLMEngine._prepare_decoder_input_ids_for_generation(decoder_input_ids)`](https://github.com/vllm-project/vllm/blob/70d268a39947a8ea950f871f9345aad21f09715e/vllm/engine/llm_engine.py#L626).
+
 ## 3. [(Optional but strongly recommended) Implement tensor parallelism and quantization support](https://docs.vllm.ai/en/latest/models/adding_model.html#optional-implement-tensor-parallelism-and-quantization-support)
 
 Follow the instructions in the vLLM documentation.

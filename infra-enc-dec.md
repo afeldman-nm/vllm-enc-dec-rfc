@@ -151,7 +151,7 @@ To that end, vLLM supports the following request formats for encoder/decoder mod
 
 Additional notes on encoder/decoder prompts
 
-* With regards to decoder prompt preprocessing, vLLM emulates the behavior of HuggingFace transformers `GenerationMixin` for encoder/decoder models:
+* With regards to decoder prompt preprocessing, vLLM emulates the default behavior of HuggingFace transformers `GenerationMixin` for encoder/decoder models:
     * vLLM's default decoder prompt is `<DEC><BOS>` where `<DEC>` is decoder start token and `<BOS>` is beginning-of-sequence token. This is an approximation of of `GenerationMixin`'s default behavior when it receives a `None` decoder prompt, which is to (1) choose `<DEC>` as the default prompt, and (2) employ a logit processing constraint which forces the first decoded token to be `<BOS>`.
     * When the user specifies a decoder prompt that does *not* begin with `<DEC>`, `<DEC>` will be prepended to the prompt tokens during decoder prompt preprocessing. If the prompt tokens already begin with `<DEC>` then decoder prompt processing makes no change.
 * However, if you are adding a new encoder/decoder model to vLLM you should consider whether vLLM's default decoder prompt & decoder prompt preprocessing logic need to be specialized for your model.
