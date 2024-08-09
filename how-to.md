@@ -267,7 +267,7 @@ Recall that vLLM parallelizes QKV computation & `Attention.forward()` along the 
 
 ### Parallelizing cross-attention $W_Q$ $W_K$ $W_V$ parameter matrices
 
-Cross-attention complicates the parallel GEMM computations against the $W_Q$, $W_K$, $W_V$ parameter matrices, [for reasons described in the encoder/decoder RFC](rfc.md#low-hanging-fruit-improve-efficiency-of-the-parallel-cross-attention-qkv-computation); essentially the Q/K/V computation must operate on both the previous-layer decoder hidden states and also encoder output hidden states. The same section of the RFC proposes a near-term workstream to address the issue. 
+Cross-attention complicates the parallel GEMM computations against the $W_Q$, $W_K$, $W_V$ parameter matrices, [for reasons described in the encoder/decoder RFC](rfc.md#low-hanging-fruit-improve-efficiency-of-the-parallel-cross-attention-qkv-computation): the Q/K/V computation must operate on both the previous-layer decoder hidden states and also encoder output hidden states; however, `QKVParallelLinear.forward()` is designed to operate on only a single input.
 
 In the mean time, the following workaround was [employed in BART](https://github.com/vllm-project/vllm/blob/21b9c49aa37c7ba08590a99b0d4f15f86439c8f9/vllm/model_executor/models/bart.py#L359-L365) to parallelize the Q/K/V computation:
 
@@ -285,6 +285,8 @@ else:
     _, k, v = qkv_enc.split([self.q_size, self.kv_size, self.kv_size],
                             dim=-1)
 ```
+
+As this is not efficient, it is a near-term goal to find a better approach.
 
 ## [4. Implement the weight loading logic](https://docs.vllm.ai/en/latest/models/adding_model.html#implement-the-weight-loading-logic)
 
