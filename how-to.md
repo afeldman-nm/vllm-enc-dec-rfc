@@ -227,7 +227,7 @@ This summary is at a high level of abstraction, so details like normalization, r
         ```
 
 * `<ModelName>CrossAttention`
-    * The QKV computation here is inefficient pending [one of the workstreams in the encoder/decoder RFC](rfc.md#low-hanging-fruit-improve-efficiency-of-the-parallel-cross-attention-qkv-computation)
+    * The QKV computation here is inefficient pending [the RFC workstream to improve the efficiency of the parallel cross-attention QKV computation](rfc.md#low-hanging-fruit-improve-efficiency-of-the-parallel-cross-attention-qkv-computation).
     * Members
         * `qkv_proj`: $[W_Q W_K W_V]$ as `QKVParallelLinear` instance
         * `attn`: `Attention` instance
