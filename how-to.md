@@ -58,76 +58,81 @@ Of note, `input_ids` and `positions` are respectively the decoder input token id
 
 (This section is not in the vLLM documentation.)
 
-* `<ModelName>ForConditionalGeneration`: top-level, task-specific model class
-    * Wraps `<ModelName>Model` & handles weight loading, logit processing & token sampling
-    * Members:
-        * `model`: `<ModelName>Model` instance
-        * `lm_head`: `ParallelLMHead` or subclass
-        * `logits_processor`
-        * `sampler`
-    * Methods other than `forward()`:
-        * `compute_logits()`
-        * `sample()`
-        * `load_weights()`
-    * The `forward()` function signature is discussed in the [previous section](#2-rewrite-the-forward-methods).
+### `<ModelName>ForConditionalGeneration`: top-level, task-specific model class
 
-* `<ModelName>Model`: core model class
-    * Encapsulates the encoder and decoder modules
-    * Members:
-        * `encoder`: <ModelName>Encoder instance
-        * `decoder`: <ModelName>Decoder instance
-    * The behavior of `<ModelName>Model.forward()` mirrors [Figure 1 in the encoder/decoder infrastructure guide](infra-enc-dec#encoderdecoder-architecture-diagram-prefill--and-decode-phase):
-        * **Prefill:**
-            * Invoke the encoder against the encoder input tokens/positions & obtain encoder output hidden states
-            * Invoke the decoder against the decoder input tokens/positions & the encoder output hidden states to obtain decoder output hidden states
-                * In the course of this step, each self-attention layer caches its KVs in its self-attention KV cache, and each cross-attention layer caches its KVs in its cross-attention KV cache.
-                * Caching is handled implicitly by the underlying vLLM `Attention` layers & should not be explicitly handled by your model implementation.
-            * Since cross-attention KVs are cached, discard the encoder output hidden states permanently
-        * **Decode:**
-            * Bypass the encoder entirely
-            * Invoke the decoder against the decoder input tokens/positions
-                * The underlying vLLM `Attention` layers in the decoder implicitly reuse the cached self-attention & cross-attention KVs
-                * The self-attention KVs corresponding to the last decoded token will be cached
-                * The cross-attention KV cache is read-only, since the encoder input sequence is static
-    * Example `forward()` function signature:
+* Wraps `<ModelName>Model` & handles weight loading, logit processing & token sampling
+* Members:
+    * `model`: `<ModelName>Model` instance
+    * `lm_head`: `ParallelLMHead` or subclass
+    * `logits_processor`
+    * `sampler`
+* Methods other than `forward()`:
+    * `compute_logits()`
+    * `sample()`
+    * `load_weights()`
+* The `forward()` function signature is discussed in the [previous section](#2-rewrite-the-forward-methods).
 
+### `<ModelName>Model`: core model class
+
+* Encapsulates the encoder and decoder modules
+* Members:
+    * `encoder`: <ModelName>Encoder instance
+    * `decoder`: <ModelName>Decoder instance
+* The behavior of `<ModelName>Model.forward()` mirrors [Figure 1 in the encoder/decoder infrastructure guide](infra-enc-dec#encoderdecoder-architecture-diagram-prefill--and-decode-phase):
+    * **Prefill:**
+        * Invoke the encoder against the encoder input tokens/positions & obtain encoder output hidden states
+        * Invoke the decoder against the decoder input tokens/positions & the encoder output hidden states to obtain decoder output hidden states
+            * In the course of this step, each self-attention layer caches its KVs in its self-attention KV cache, and each cross-attention layer caches its KVs in its cross-attention KV cache.
+            * Caching is handled implicitly by the underlying vLLM `Attention` layers & should not be explicitly handled by your model implementation.
+        * Since cross-attention KVs are cached, discard the encoder output hidden states permanently
+    * **Decode:**
+        * Bypass the encoder entirely
+        * Invoke the decoder against the decoder input tokens/positions
+            * The underlying vLLM `Attention` layers in the decoder implicitly reuse the cached self-attention & cross-attention KVs
+            * The self-attention KVs corresponding to the last decoded token will be cached
+            * The cross-attention KV cache is read-only, since the encoder input sequence is static
+* Example `forward()` function signature:
+
+    ```
+    def forward(self, input_ids: torch.Tensor, positions: torch.Tensor,
+                encoder_input_ids: torch.Tensor,
+                encoder_positions: torch.Tensor, kv_caches: List[torch.Tensor],
+                attn_metadata: AttentionMetadata) -> torch.Tensor
+    ```
+
+### `<ModelName>Encoder` and `<ModelName>Decoder`: encoder and decoder modules
+
+* The encoder and decoder have generally similar structures, although specific models may differentiate them in subtle ways. However, one difference is that the decoder consumes encoder output hidden states & passes them into each decoder layer.
+* Members
+    * `cache_config`
+    * `quant_config`
+    * `embed_tokens`: encoder token embedding layer; `VocabParallelEmbedding` or subclass
+    * `embed_positions`: encoder position embedding layer; `VocabParallelEmbedding` or subclass
+    * `layers`: encoder layer stack
+    * Instances of any other layers such as `nn.LayerNorm` which are applied by the {encoder,decoder}
+* A general outline of `<ModelName>Encoder.forward()` and `<ModelName>Decoder.forward()` behavior:
+    * Compute token & position embeddings
+    * Evaluate the {encoder,decoder} layer stack against the normalized embeddings to obtain {encoder,decoder} output hidden states
+        * Only for decoder: pass encoder output hidden states to each decoder layer
+    * Also account for normalization, etc.
+* Example `forward()` function signature:
+    * Encoder:
         ```
         def forward(self, input_ids: torch.Tensor, positions: torch.Tensor,
-                    encoder_input_ids: torch.Tensor,
-                    encoder_positions: torch.Tensor, kv_caches: List[torch.Tensor],
+                    kv_caches: List[torch.Tensor],
                     attn_metadata: AttentionMetadata) -> torch.Tensor
         ```
+    * Decoder:
+        ```
+        # Compared to encoder, has additional `encoder_hidden_states` input
+        def forward(self, decoder_input_ids: torch.Tensor,
+                    decoder_positions: torch.Tensor,
+                    encoder_hidden_states: Optional[torch.Tensor],
+                    kv_caches: List[torch.Tensor],
+                    attn_metadata: AttentionMetadata) -> torch.Tensor:
+        ```
 
-* `<ModelName>Encoder` and `<ModelName>Decoder`: encoder and decoder classes
-    * The encoder and decoder have generally similar structures, although specific models may differentiate them in subtle ways. However, one difference is that the decoder consumes encoder output hidden states & passes them into each decoder layer.
-    * Members
-        * `cache_config`
-        * `quant_config`
-        * `embed_tokens`: encoder token embedding layer; `VocabParallelEmbedding` or subclass
-        * `embed_positions`: encoder position embedding layer; `VocabParallelEmbedding` or subclass
-        * `layers`: encoder layer stack
-        * Instances of any other layers such as `nn.LayerNorm` which are applied by the {encoder,decoder}
-    * A general outline of `<ModelName>Encoder.forward()` and `<ModelName>Decoder.forward()` behavior:
-        * Compute token & position embeddings
-        * Superimpose & normalize embeddings
-        * Evaluate the {encoder,decoder} layer stack against the normalized embeddings to obtain {encoder,decoder} output hidden states
-            * Only for decoder: pass encoder output hidden states to each decoder layer
-    * Example `forward()` function signature:
-        * Encoder:
-            ```
-            def forward(self, input_ids: torch.Tensor, positions: torch.Tensor,
-                        kv_caches: List[torch.Tensor],
-                        attn_metadata: AttentionMetadata) -> torch.Tensor
-            ```
-        * Decoder:
-            ```
-            # Compared to encoder, has additional `encoder_hidden_states` input
-            def forward(self, decoder_input_ids: torch.Tensor,
-                        decoder_positions: torch.Tensor,
-                        encoder_hidden_states: Optional[torch.Tensor],
-                        kv_caches: List[torch.Tensor],
-                        attn_metadata: AttentionMetadata) -> torch.Tensor:
-            ```
+### Individual encoder and decoder layers
 
 * `<ModelName>EncoderLayer`: encoder layer class
     * `<ModelName>EncoderLayer` corresponds to [any one of the gray boxes representing encoder layers in Figure 1 of the encoder/decoder infrastructure guide](infra-enc-dec#encoderdecoder-architecture-diagram-prefill--and-decode-phase)
@@ -169,13 +174,92 @@ Of note, `input_ids` and `positions` are respectively the decoder input token id
         ) -> torch.Tensor
         ```
 
-* `<ModelName>EncoderAttention`: wraps the QKV computation & attention backend invocation
+### Wrapper classes for QKV computation + attention backend invocation
+
+* `<ModelName>EncoderAttention`
+    * Members
+        * `qkv_proj`: $[W_Q W_K W_V]$ as `QKVParallelLinear` instance
+        * `attn`: `Attention` instance
+        * `out_proj`: $W_O$ as `RowParalleLinear` instance
+        * `q_size`: (heads per GPU) $\times$ (head dim)
+        * `kv_size`: (KV heads per GPU) $\times$ (head dim)
+    * `forward()` behavior:
+        * Compute $[Q K V] = x [W_Q W_K W_V]$ using `qkv_proj(hidden_states)`
+        * Invoke `Attention` backend against Q,K,V, passing in `attn_type=AttentionType.ENCODER`
+            * `attn_type=AttentionType.ENCODER` causes `Attention` to
+                * utilize `attn_metadata.encoder_seq_lens` as a reference for the sequence lengths of the encoder input
+                * Construct a non-causal attention mask, where each diagonal block is a square matrix equal in side-length to the sequence length of the corresponding encoder hidden states
+                * Forego KV caching entirely
+        * Apply $W_O$ to attention output using `out_proj`, yielding result
+    * Example `forward()` function signature:
+
+        ```
+        def forward(self, hidden_states: torch.Tensor, kv_cache: torch.Tensor,
+                    attn_metadata: AttentionMetadata) -> torch.Tensor
+        ```
+
+* `<ModelName>DecoderSelfAttention`
+    * Members:
+        * `qkv_proj`: $[W_Q W_K W_V]$ as `QKVParallelLinear` instance
+        * `attn`: `Attention` instance
+        * `out_proj`: $W_O$ as `RowParalleLinear` instance
+        * `q_size`: (heads per GPU) $\times$ (head dim)
+        * `kv_size`: (KV heads per GPU) $\times$ (head dim)
+    * `forward()` behavior:
+        * Compute $[Q K V] = x [W_Q W_K W_V]$ using `qkv_proj(hidden_states)`
+        * Invoke `Attention` backend against Q,K,V, passing in `attn_type=AttentionType.DECODER`
+            * `attn_type=AttentionType.DECODER` causes `Attention` to
+                * utilize `attn_metadata.seq_lens` as a reference for the sequence lengths of the decoder input
+                * Construct a causal attention mask, where each diagonal block is a square matrix equal in side-length to the sequence length of the corresponding decoder hidden states
+                * Cache self-attention KVs
+        * Apply $W_O$ to attention output using `out_proj`, yielding result
+    * Example `forward()` function signature:
+
+        ```
+        def forward(self, hidden_states: torch.Tensor, kv_cache: torch.Tensor,
+                    attn_metadata: AttentionMetadata) -> torch.Tensor
+        ```
+
+* `<ModelName>CrossAttention`
+    * The QKV computation here is inefficient pending [one of the workstreams in the encoder/decoder RFC](rfc.md#low-hanging-fruit-improve-efficiency-of-the-parallel-cross-attention-qkv-computation)
+    * Members
+        * `qkv_proj`: $[W_Q W_K W_V]$ as `QKVParallelLinear` instance
+        * `attn`: `Attention` instance
+        * `out_proj`: $W_O$ as `RowParalleLinear` instance
+        * `q_size`: (heads per GPU) $\times$ (head dim)
+        * `kv_size`: (KV heads per GPU) $\times$ (head dim)
+    * `forward()` behavior:
+        * Compute $[Q_{dec} K_{dec} V_{dec}] = x [W_Q W_K W_V]$ using `qkv_proj(decoder_hidden_states)`
+        * Keep $Q_{dec}$, discard $K_{dec}$, $V_{dec}$
+        * Compute $K_{enc}$ and $V_{enc}$
+            * **Prefill:** compute $[Q_{enc} K_{enc} V_{enc}] = x [W_Q W_K W_V]$ using `qkv_proj(encoder_hidden_states)`; discard $Q_{enc}$
+            * **Decode:** $K_{enc} = V_{enc} =$ `None`
+        * Invoke `Attention` backend against $Q_{dec}$,$K_{enc}$,$V_{enc}$, passing in `attn_type=AttentionType.ENCODER_DECODER`
+            * `attn_type=AttentionType.ENCODER_DECODER` causes `Attention` to
+                * utilize `attn_metadata.seq_lens` as a reference for the sequence lengths of the corresponding decoder hidden states, and `attn_metadata.encoder_seq_lens` as a reference for the sequence lengths of the corresponding encoder hidden states
+                * Construct a non-causal attention mask, where each diagonal block is a rectangular matrix with dimensions (decoder seq len) $\times$ (encoder seq len)
+                * Cache cross-attention KVs
+    * Example `forward()` function signature:
+
+        ```
+        def forward(
+            self,
+            decoder_hidden_states: torch.Tensor,
+            kv_cache: torch.Tensor,
+            attn_metadata: AttentionMetadata,
+            encoder_hidden_states: Optional[torch.Tensor] = None,
+        ) -> torch.Tensor
+        ```
 
 ## 3. [(Optional but strongly recommended) Implement tensor parallelism and quantization support](https://docs.vllm.ai/en/latest/models/adding_model.html#optional-implement-tensor-parallelism-and-quantization-support)
 
 Follow the instructions in the vLLM documentation.
 
-Cross-attention complicates the parallel GEMM computations against the $W_Q$, $W_K$, $W_V$ parameter matrices, [for reasons described in the encoder/decoder RFC](rfc.md#low-hanging-fruit-improve-cross-attention-parameter-matrix-parallelism); essentially the Q/K/V computation must operate on both the previous-layer decoder hidden states and also encoder output hidden states. The same section of the RFC proposes a near-term workstream to address the issue. 
+Recall that vLLM parallelizes QKV computation & `Attention.forward()` along the head-index dimension (i.e. per-head computations are distributed among GPUs.) Review the `__init__()` code in `BartEncoderAttention`, `BartDecoderSelfAttention`, and `BartCrossAttention` for guidance on how to use `tp_world_size` to compute the size of the attention computation (`num_heads`, `num_kv_heads`, etc.) on a single GPU.
+
+### Parallelizing cross-attention $W_Q$ $W_K$ $W_V$ parameter matrices
+
+Cross-attention complicates the parallel GEMM computations against the $W_Q$, $W_K$, $W_V$ parameter matrices, [for reasons described in the encoder/decoder RFC](rfc.md#low-hanging-fruit-improve-efficiency-of-the-parallel-cross-attention-qkv-computation); essentially the Q/K/V computation must operate on both the previous-layer decoder hidden states and also encoder output hidden states. The same section of the RFC proposes a near-term workstream to address the issue. 
 
 In the mean time, the following workaround was [employed in BART](https://github.com/vllm-project/vllm/blob/21b9c49aa37c7ba08590a99b0d4f15f86439c8f9/vllm/model_executor/models/bart.py#L359-L365) to parallelize the Q/K/V computation:
 

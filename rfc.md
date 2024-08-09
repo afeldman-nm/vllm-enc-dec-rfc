@@ -316,7 +316,7 @@ Steps to support pipeline-parallelism with encoder/decoder models:
 
 ### Additional tasks
 
-#### Low-hanging fruit: improve cross-attention parameter matrix parallelism
+#### Low-hanging fruit: improve efficiency of the parallel cross-attention QKV computation
 
 Cross-attention complicates the parallel GEMM computations against the $W_Q$, $W_K$, $W_V$ parameter matrices: `QKVParallelLinear.forward()` is inherited from `ColumnParallelLinear.forward(input_)`, which takes only a single `input_` argument; however, [Figure 1 of the encoder/decoder architecture overview](infra-enc-dec.md#encoderdecoder-architecture-diagram-prefill--and-decode-phase) shows that cross-attention $W_Q$ operates on the prior self-attention output while $W_K$ and $W_V$ operate on the encoder hidden states. Furthermore, note that $W_K$ and $W_V$ are never utilized during decode because the encoder sequence is static; thus, cross-attention layers utilize all three matrices during prefill, but only $W_Q$ during decode.
 
