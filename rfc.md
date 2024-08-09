@@ -135,7 +135,7 @@ Steps to ensure that vLLM supports encoder/decoder models in combination with al
 
 vLLM encoder/decoder infrastructure should be compatible with most of the existing vLLM quantization methods, because the specialized quantization kernels are only employed for GEMM operations involving the learned weight matrices ($W_q$, $W_k$, etc.), whereas the encoder/decoder work really only modifies how the `Attention(q, k, v, kv_cache)` layer behaves & does not impact the learned weight matrices at all.
 
-However, vLLM encoder/decoder infrastructure *may* be incompatible with FP8. It does appear that a specialized quantized KV cache kernel is employed by the `Attention(q, k, v, kv_cache)` layer when FP8 quantization is employed.
+It is less clear whether vLLM encoder/decoder infrastructure would be incompatible with FP8. It does appear that a specialized quantized KV cache kernel is employed by the `Attention(q, k, v, kv_cache)` layer when FP8 quantization is employed.
 
 ### Support encoder/decoder multimodality
 
