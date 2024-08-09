@@ -213,7 +213,7 @@ The block manager contains two internal block table representations
 
 #### Allocate
 
-* The block manager is managing `total_num_gpu_blocks` GPU memory blocks and `total_num_cpu_blocks` CPU memory blocks
+* The block manager is managing $total\ num\ gpu\ blocks$ GPU memory blocks and $total\ num\ cpu\ blocks$ CPU memory blocks
 * `block_man.allocate(seq_group)` provisions:
   * One self-attention KV cache for each decoder sequence in the `SequenceGroup`
   * One KV cache for cross-attention, with the number of token slots equal to the length of the `SequenceGroup`'s encoder sequence.
@@ -251,13 +251,13 @@ The block manager contains two internal block table representations
 * `block_man.free_cross(seq_group)` frees the cross-attention KV cache blocks associated with the `SequenceGroup` argument passed in.
   * After `free_cross()`,
 
-    $$free\ device\ blocks\ after\ free\_cross = free\ device\ blocks\ + |cross\ attn\ blocktable|$$
+    $$free\ device\ blocks\ after\ free\ cross = free\ device\ blocks\ + |cross\ attn\ blocktable|$$
 
     where $device$ is whichever of $\{CPU,GPU\}$ the `SequenceGroup` currently resides in.
 
 #### Reset
 
-* `block_man.reset()` frees all cache blocks associated with all block tables managed by the block manager, after which there are $total\_num\_gpu\_blocks$ free GPU memory blocks and $total\_num\_cpu\_blocks$ free CPU memory blocks
+* `block_man.reset()` frees all cache blocks associated with all block tables managed by the block manager, after which there are $total\ num\ gpu\ blocks$ free GPU memory blocks and $total\ num\ cpu\ blocks$ free CPU memory blocks
 
 ## Scheduler modifications
 
