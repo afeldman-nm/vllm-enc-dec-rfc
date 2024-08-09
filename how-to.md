@@ -271,7 +271,7 @@ Cross-attention complicates the parallel GEMM computations against the $W_Q$, $W
 
 A near-term goal is to add a `CrossAttentionQKVParallelLinear` class which supports two inputs.
 
-Until that fix becomes available, the following workaround was [employed in BART](https://github.com/vllm-project/vllm/blob/21b9c49aa37c7ba08590a99b0d4f15f86439c8f9/vllm/model_executor/models/bart.py#L359-L365) to parallelize the Q/K/V computation:
+Until that fix becomes available, the following workaround was [employed in BART](https://github.com/vllm-project/vllm/blob/21b9c49aa37c7ba08590a99b0d4f15f86439c8f9/vllm/model_executor/models/bart.py#L356-L365) to parallelize the Q/K/V computation:
 
 ```
 # (afeldman-nm 2024/07/22) TODO:
