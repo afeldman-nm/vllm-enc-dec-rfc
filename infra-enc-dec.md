@@ -37,14 +37,18 @@ The following sections will add more detail. It may be helpful to review [the of
 
 ## 1. Issuing a request to vLLM
 
-It must be possible for an encoder/decoder request to specify both encoder and decoder prompts, a feature which was not previously supported by vLLM.
+For decoder-only models, a vLLM request specifies a single text or tokens prompt (and possibly multimodal data.)
 
-However, it is also normal for encoder/decoder models to be invoked by passing in only a single prompt. In these cases, the input to `model.generate()` is typically passed to the encoder. The reason is that the encoder input is usually the "primary" input reflecting the purpose the model was designed for, whereas the decoder input - if specified by the user at all - is for tuning model behavior. For example:
+An encoder decoder model is architecturally capable of accepting two prompts.
+
+However, taking HF transformers as an example, it is also normal for encoder/decoder models to be invoked by passing in only a single prompt. In these cases, the input to `model.generate()` is typically passed to the encoder. The reason is that the encoder input is usually the "primary" input reflecting the purpose the model was designed for, whereas the decoder input - if specified by the user at all - is for tuning model behavior. For example:
 
 * With HuggingFace (HF) BART, invoking `model.generate(prompt)` passes `prompt` to the encoder input, because the encoder encodes the question or document to summarize.
 * With HF Whisper - a speech recognition model - preprocessed audio embeddings are passed to the encoder as input. The user rarely specifies a decoder prompt directly; instead the `WhisperConfig` determines translation language, timestamps, task, and other model behaviors. During inference Whisper effectively injects these settings into the decoder sequence as control tokens.
 
-This suggests that when vLLM is running an encoder/decoder model, requests should always contain an encoder input prompt, and if the request contains only a single prompt then it should be assumed to be an encoder input prompt; however, it should also be possible for a request to specify an additional decoder prompt, in case the user wants to tune model behavior. Furthermore, if the user specifies only the encoder input prompt, vLLM must be able to guess a "default" decoder prompt.
+This suggests that when vLLM is running an encoder/decoder model, requests must *at minimum* always contain an encoder input prompt. 
+
+However, it may be desirable for a user to be able to tweak the decoder prompt by injecting custom control tokens to tune model behavior. So it should also be possible for a request to specify a decoder prompt in addition to the encoder prompt.
 
 ### Supported encoder/decoder prompt formats
 
