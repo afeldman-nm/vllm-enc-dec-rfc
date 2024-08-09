@@ -150,26 +150,9 @@ To that end, vLLM supports the following request formats for encoder/decoder mod
 Additional notes on encoder/decoder prompts
 
 * With regards to decoder prompt preprocessing, vLLM emulates the behavior of HuggingFace transformers `GenerationMixin` for encoder/decoder models:
-    * vLLM's default decoder prompt is `<DEC><BOS>` where `<DEC>` is decoder start token and `<BOS>` is beginning-of-sequence token. 
+    * vLLM's default decoder prompt is `<DEC><BOS>` where `<DEC>` is decoder start token and `<BOS>` is beginning-of-sequence token. This is an approximation of of `GenerationMixin`'s default behavior when it receives a `None` decoder prompt, which is to (1) choose `<DEC>` as the default prompt, and (2) employ a logit processing constraint which forces the first decoded token to be `<BOS>`.
     * When the user specifies a decoder prompt that does *not* begin with `<DEC>`, `<DEC>` will be prepended to the prompt tokens during decoder prompt preprocessing. If the prompt tokens already begin with `<DEC>` then decoder prompt processing makes no change.
 * However, if you are adding a new encoder/decoder model to vLLM you should consider whether vLLM's default decoder prompt & decoder prompt preprocessing logic need to be specialized for your model.
-
-### 2. Tokenize the data if necessary.
-
-Both the encoder and the decoder prompts are tokenized, unless token ids are provided directly.
-
-### 3. Process the inputs
-
-Apply special processing to the decoder prompt:
-* If decoder prompt is `None`, replace with default "empty" decoder prompt.
-* Append decoder start token at the beginning of the tokenized decoder prompt, unless
-  it is already present.
-
-### 4. Send the processed inputs to ExecutorBase.
-
-### 5. Distribute the inputs via WorkerBase to ModelRunnerBase.
-
-### 6. If the data contains multi-modal data, convert it into keyword arguments using MULTIMODAL_REGISTRY.map_input.
 
 ## Memory management
 
