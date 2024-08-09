@@ -213,7 +213,7 @@ The block manager contains two internal block table representations
 
 #### Allocate
 
-* The block manager is managing $total\_num\_gpu\_blocks$ GPU memory blocks and $total\_num\_cpu\_blocks$ CPU memory blocks
+* The block manager is managing `total_num_gpu_blocks` GPU memory blocks and `total_num_cpu_blocks` CPU memory blocks
 * `block_man.allocate(seq_group)` provisions:
   * One self-attention KV cache for each decoder sequence in the `SequenceGroup`
   * One KV cache for cross-attention, with the number of token slots equal to the length of the `SequenceGroup`'s encoder sequence.
