@@ -245,8 +245,7 @@ Steps to add support for the T5 model [^4]:
 
 #### Add other encoder/decoder models
 
-* Variants of aforementioned models (BART, T5, Whisper)
-* CogAgent
+* Review open vLLM issues on GitHub and identify other encoder/decoder models which are requested by users
 
 ### Support custom attention bias
 
@@ -268,7 +267,7 @@ T5 employs custom attention bias in order to implement relative positional encod
 
 #### Existing attention bias support
 
-*Currently, no vLLM attention backend fully supports custom attention bias*. This is because most attention kernels employed by vLLM allow attention bias to be specified only in an indirect or "compressed" manner, i.e. through the use of a `causal=True/False` flag (causal attention mask being a type of attention bias.) The xFormers `memory_efficient_attention_forward` kernel[^7] is the exception, in that it permits an arbitrary pytorch tensor to be passed in via the `attn_bias` argument. However vLLM only employs this kernel for prefill; none of the decode-phase kernels employed by vLLM can accept an arbitrary pytorch tensor as a custom attention bias, making custom attention bias impossible to apply end-to-end for both prefill and decode under the current vLLM implementation.
+*Currently, no vLLM attention backend fully supports custom attention bias*. This is because most attention kernels employed by vLLM do not allow a fully materialized attention bias to be passed in, relying instead on i.e. a `causal=True/False` flag (causal attention mask being a type of attention bias.) The xFormers `memory_efficient_attention_forward` kernel[^7] is the exception, in that it permits an arbitrary pytorch tensor to be passed in via the `attn_bias` argument. However vLLM only employs this kernel for prefill; none of the decode-phase kernels employed by vLLM can accept an arbitrary pytorch tensor as a custom attention bias, making custom attention bias impossible to apply end-to-end for both prefill and decode under the current vLLM implementation.
 
 In addition to lack of kernel-level support for custom attention bias, most vLLM backends also prevent passing a custom attention bias matrix to the underlying kernel. The exception is the XFormers backend, which accepts an attention bias via `XFormersMetadata.attn_bias` attribute (however the XFormers backend only utilizes `attn_bias` in the prefill phase.)
 
