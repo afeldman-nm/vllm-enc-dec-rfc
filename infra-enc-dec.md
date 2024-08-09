@@ -156,15 +156,59 @@ Additional notes on encoder/decoder prompts
     * When the user specifies a decoder prompt that does *not* begin with `<DEC>`, `<DEC>` will be prepended to the prompt tokens during decoder prompt preprocessing. If the prompt tokens already begin with `<DEC>` then decoder prompt processing makes no change.
 * However, if you are adding a new encoder/decoder model to vLLM you should consider whether vLLM's default decoder prompt & decoder prompt preprocessing logic need to be specialized for your model.
 
+## vLLM internal data structures impacted by encoder/decoder support
+
+* Upon receiving a request, `LLMEngine` processes the input prompt into an `EncoderDecoderLLMInput` instance
+
+    ```
+    class EncoderDecoderLLMInputs(LLMInputs):
+        """
+        The inputs in :class:`~vllm.LLMEngine` before they are
+        passed to the model executor.
+
+        This specifies the required data for encoder-decoder models.
+        """
+        encoder_prompt_token_ids: List[int]
+        """The token IDs of the encoder prompt."""
+
+        encoder_prompt: NotRequired[Optional[str]]
+        """
+        The original encoder prompt text corresponding to the token IDs, if
+        available.
+        """
+    ```
+
+    (a `multi_modal_data` field will be added once encoder/decoder multimodality support lands.)
+
+* vLLM allows a `Sequence` to be constructed from an `LLMInputs` instance, via the `inputs` constructor argument. Thus it is also possible to construct a `Sequence` from an `EncoderDecoderLLMInputs` instance. 
+  * The `Sequence` constructor has a `from_decoder_prompt` argument:
+    * `from_decoder_prompt=True` will construct the sequence from `inputs.prompt_token_ids` and `inputs.prompt`
+    * `from_decoder_prompt=False` will construct the sequence from `inputs.encoder_prompt_token_ids` and `inputs.encoder_prompt`
+
+* `SequenceGroup` represents all sequences associated with a single request. Now `SequenceGroup` has an additional `encoder_seq` member, which allows it to represent the encoder input sequence associated with a request.
+
+* `SequenceGroupMetadata` encapsulates metadata - including but not limited to sequence data & block tables - associated with a given request in a given inference step. Now `SequenceGroupMetadata` has additional `encoder_seq_data` and `cross_block_table` fields for representing encoder input sequence data and encoder/decoder cross-attention block table, respectively.
+  * `SequenceGroupMetadata.block_table` is a `Dict[int,List[int]]` because the sequence group contains a self-attention block table for each each decoder sequence; each decoder sequence has an integer ID which is used to look up its block table.
+  * `SequenceGroupMetadata.cross_block_table` is an `Optional[List[int]]` because there is maximum one cross-attention block table per sequence group (the decoder-only pipeline employs no cross-attention block tables)
+
 ## Memory management
-
-### vLLM memory profiling
-
-### How `Sequence`, `SequenceGroup`, `SequenceGroupMetadata`, and block tables are impacted by encoder/decoder
 
 ### How block space manager v1 manages GPU and CPU memory for encoder/decoder models
 
 (For brevity, the impact of encoder/decoder on block space manager v2 is omitted here.)
+
+#### Internal block table representations
+
+The block manager contains two internal block table representations
+* `block_tables: Dict[int, BlockTable]`: a *decoder `Sequence` ID -> self-attention block table* mapping
+* `cross_block_tables: Dict[str, BlockTable]`: a *`SequenceGroup` request ID -> cross-attention block table* mapping
+  * Rationale: as described earlier there is max one cross-attention block-table per `SequenceGroup`, therefore `SequenceGroup` request IDs are sufficient for identifying cross-attention block-tables
+  * Note: (1) `SequenceGroup` IDs are globally-unique in vLLM (2) `SequenceGroup` request IDs are strings
+  * For decoder-only models, `cross_block_tables` will be an empty dictionary
+
+`block_man.get_block_table(seq)` returns the self-attention block-table associated with the `Sequence` in the argument.
+
+`block_man.get_cross_block_table(seq_group)` returns the cross-attention block-table associated with the `SequenceGroup` in the argument.
 
 #### Allocate
 
@@ -211,6 +255,8 @@ Additional notes on encoder/decoder prompts
     where $device$ is whichever of $\{CPU,GPU\}$ the `SequenceGroup` currently resides in.
 
 * `block_man.reset()` frees all cache blocks associated with all block tables managed by the block manager, after which there are $total\_num\_gpu\_blocks$ free GPU memory blocks and $total\_num\_cpu\_blocks$ free CPU memory blocks
+
+### vLLM memory profiling
 
 ## Engine & scheduler modifications
 
