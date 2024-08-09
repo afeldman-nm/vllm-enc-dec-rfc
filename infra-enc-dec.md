@@ -179,7 +179,7 @@ Additional notes on encoder/decoder prompts
         """
     ```
 
-    (a `multi_modal_data` field will be added once encoder/decoder multimodality support lands.)
+    Note that `EncoderDecoderLLMInputs` in addition to the encoder-oriented fields shown above, `EncoderDecoderLLMInputs` also retains the decoder-oriented `prompt` and `prompt_token_ids` fields defined for `LLMInputs`.
 
 * vLLM allows a `Sequence` to be constructed from an `LLMInputs` instance, via the `inputs` constructor argument. Thus it is also possible to construct a `Sequence` from an `EncoderDecoderLLMInputs` instance. 
   * The `Sequence` constructor has a `from_decoder_prompt` argument:
