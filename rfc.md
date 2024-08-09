@@ -1,6 +1,6 @@
 # [RFC] Encoder/decoder models & feature compatibility
 
-tl;dr With Encoder/decoder model support landing soon, the next steps are to (1) add frequently-asked-for models (T5, Whisper, ...) and (2) increase the number of vLLM features (quantization, CUDAGraph, pipeline parallelism, all attn backends, ...) compatible with encoder/decoder
+tl;dr With Encoder/decoder model support landing soon, the next steps are to (1) add support for frequently-requested models (T5, Whisper, ...) and (2) increase the number of pre-existing vLLM features (quantization, CUDAGraph, pipeline parallelism, all attn backends, ...) which are compatible with encoder/decoder models. The ask for the vLLM contributor community is to help with this process.
 
 ## Motivation
 
@@ -25,7 +25,7 @@ The support matrix below summarizes which features & encoder/decoder models will
     <th>Is supporting this feature a long-term goal?</th>
   </tr>
   <tr>
-    <td><a href url="infra-enc-dec.md">Encoder/decoder infrastructure</a></td>
+    <td>Encoder/decoder infrastructure</td>
     <td><strong><u>Yes</u></strong></td>
     <td><strong><u>Yes</u></strong></td>
   </tr>
@@ -35,7 +35,7 @@ The support matrix below summarizes which features & encoder/decoder models will
     <td><strong><u>Yes</u></strong></td>
   </tr>
   <tr>
-    <td><a href url="#add-whisper-model">Whisper</a></td>
+    <td>Whisper</td>
     <td>No</td>
     <td><strong><u>Yes</u></strong></td>
   </tr>
