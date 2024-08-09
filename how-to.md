@@ -84,7 +84,7 @@ This summary is at a high level of abstraction, so details like normalization, r
 * Members:
     * `encoder`: <ModelName>Encoder instance
     * `decoder`: <ModelName>Decoder instance
-* The behavior of `<ModelName>Model.forward()` mirrors [Figure 1 in the encoder/decoder infrastructure guide](infra-enc-dec.md#encoderdecoder-architecture-diagram-prefill--and-decode-phase):
+* The behavior of `<ModelName>Model.forward()` mirrors [Figure 1 in the encoder/decoder infrastructure guide](https://github.com/afeldman-nm/vllm-enc-dec-rfc/blob/main/infra-enc-dec.md#encoderdecoder-architecture-diagram-prefill--and-decode-phase):
     * **Prefill:**
         * Invoke the encoder against the encoder input tokens/positions & obtain encoder output hidden states
         * Invoke the decoder against the decoder input tokens/positions & the encoder output hidden states to obtain decoder output hidden states
@@ -141,7 +141,7 @@ This summary is at a high level of abstraction, so details like normalization, r
 ### Individual encoder and decoder layers
 
 * `<ModelName>EncoderLayer`: encoder layer class
-    * `<ModelName>EncoderLayer` corresponds to [any one of the gray boxes representing encoder layers in Figure 1 *(left)* of the encoder/decoder infrastructure guide](infra-enc-dec.md#encoderdecoder-architecture-diagram-prefill--and-decode-phase)
+    * `<ModelName>EncoderLayer` corresponds to [any one of the gray boxes representing encoder layers in Figure 1 *(left)* of the encoder/decoder infrastructure guide](https://github.com/afeldman-nm/vllm-enc-dec-rfc/blob/main/infra-enc-dec.md#encoderdecoder-architecture-diagram-prefill--and-decode-phase)
     * Members:
         * `self_attn`: `<ModelName>EncoderAttention`
         * `activation_fn`: vLLM MLP activation function
@@ -164,7 +164,7 @@ This summary is at a high level of abstraction, so details like normalization, r
         * `activation_fn`: vLLM MLP activation function
         * `fc1` and `fc2`: MLP layers; `ColumnParallelLinear` and `RowParallelLinear` respectively
         * Instances of any other layers such as `nn.LayerNorm` which are applied once by the encoder
-    * The behavior of `<ModelName>DecoderLayer.forward()` mirrors [the blown-up decoder layer in Figure 1 *(right)* of the encoder/decoder infrastructure guide](infra-enc-dec.md#encoderdecoder-architecture-diagram-prefill--and-decode-phase):
+    * The behavior of `<ModelName>DecoderLayer.forward()` mirrors [the blown-up decoder layer in Figure 1 *(right)* of the encoder/decoder infrastructure guide](https://github.com/afeldman-nm/vllm-enc-dec-rfc/blob/main/infra-enc-dec.md#encoderdecoder-architecture-diagram-prefill--and-decode-phase):
         * Apply decoder self-attention to previous decoder-layer output hidden states
         * Apply encoder/decoder cross-attention to self-attention output hidden states & encoder output hidden states
         * Apply MLP
