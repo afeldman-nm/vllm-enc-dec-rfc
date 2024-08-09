@@ -25,7 +25,7 @@ The support matrix below summarizes which features & encoder/decoder models will
     <th>Is supporting this feature a long-term goal?</th>
   </tr>
   <tr>
-    <td><a href url="infra-enc-dec.md">Encoder/decoder infrastructure</a></td>
+    <td><a href url="./infra-enc-dec.md">Encoder/decoder infrastructure</a></td>
     <td><strong><u>Yes</u></strong></td>
     <td><strong><u>Yes</u></strong></td>
   </tr>
