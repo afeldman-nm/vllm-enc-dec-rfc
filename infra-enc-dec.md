@@ -46,7 +46,7 @@ However, taking HF transformers as an example, it is also normal for encoder/dec
 * With HuggingFace (HF) BART, invoking `model.generate(prompt)` passes `prompt` to the encoder input, because the encoder encodes the question or document to summarize.
 * With HF Whisper - a speech recognition model - preprocessed audio embeddings are passed to the encoder as input. The user rarely specifies a decoder prompt directly; instead the `WhisperConfig` determines translation language, timestamps, task, and other model behaviors. During inference Whisper effectively injects these settings into the decoder sequence as control tokens.
 
-This suggests that when vLLM is running an encoder/decoder model, requests must *at minimum* always contain an encoder input prompt. 
+This suggests that when vLLM is running an encoder/decoder model, requests must *at minimum* always contain an encoder input prompt (or, in the future, multimodal data.)
 
 However, it may be desirable for a user to be able to tweak the decoder prompt by injecting custom control tokens to tune model behavior. So it should also be possible for a request to specify a decoder prompt in addition to the encoder prompt.
 
