@@ -58,7 +58,7 @@ Of note, `input_ids` and `positions` are the decoder input token ids and positio
 
 ## 2.5 (Optional but strongly recommended) Implement the following encoder/decoder model architecture 
 
-(This section is not in the vLLM documentation.)
+(There is not a corresponding section in the vLLM documentation.)
 
 This section proposes a general encoder/decoder model architecture, starting with the top-level task-specific model class and proceeding hierarchically downward to the `Attention` layers.
 
