@@ -244,14 +244,14 @@ The block manager contains two internal block table representations
 * `block_man.free(seq)` frees the self-attention KV cache blocks associated with the `Sequence` argument passed in.
   * After `free()`,
   
-    $$ free\; device\; blocks\; after\; free = free\; device\; blocks\ + |seq_{i}\; decoder\; self\; attn\; block\; table| $$
+    $$free\; device\; blocks\; after\; free = free\; device\; blocks\ + |seq_{i}\; decoder\; self\; attn\; block\; table|$$
 
     where $device$ is whichever of $\{CPU,GPU\}$ the `SequenceGroup` currently resides in, and $i$ is the `Sequence` id
 
 * `block_man.free_cross(seq_group)` frees the cross-attention KV cache blocks associated with the `SequenceGroup` argument passed in.
   * After `free_cross()`,
 
-    $$ free\; device\; blocks\; after\; free\_cross = free\; device\; blocks\ + |cross\; attn\; blocktable| $$
+    $$free\; device\; blocks\; after\; free\_cross = free\; device\; blocks\ + |cross\; attn\; blocktable|$$
 
     where $device$ is whichever of $\{CPU,GPU\}$ the `SequenceGroup` currently resides in.
 
