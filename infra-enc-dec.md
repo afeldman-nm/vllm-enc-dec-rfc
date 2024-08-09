@@ -254,11 +254,40 @@ The block manager contains two internal block table representations
 
     where $device$ is whichever of $\{CPU,GPU\}$ the `SequenceGroup` currently resides in.
 
+#### Reset
+
 * `block_man.reset()` frees all cache blocks associated with all block tables managed by the block manager, after which there are $total\_num\_gpu\_blocks$ free GPU memory blocks and $total\_num\_cpu\_blocks$ free CPU memory blocks
 
-### vLLM memory profiling
+## Scheduler modifications
 
-## Engine & scheduler modifications
+* For encoder/decoder models only,
+  * `Scheduler.schedule()` now has the added behavior of passing `encoder_seq_data` and `cross_block_table` to the `SequenceGroupMetadata` constructor
+    * `Scheduler.scheduler()` obtains `encoder_seq_data` from `SequenceGroup.encoder_seq`  and `cross_block_table` from `block_man.get_cross_block_table(seq_group)`
+
+  * `Scheduler.abort_seq_group(req_id)` now has the added effect of freeing the cross-attention block-table associated with the `SequenceGroup` with request ID `req_id`
+    * `Scheduler._free_seq_group_cross_attn_blocks(seq_group)` is the helper function which frees the cross-attention block-table
+
+  * `Scheduler.free_finished_seq_groups()` now has the added effect of invoking `Scheduler._free_seq_group_cross_attn_blocks(seq_group)` against all *finished* `SequenceGroup`s, which frees the `SequenceGroup` cross-attention block tables.
+    * `Scheduler.free_finished_seq_groups()` is invoked by `LLMEngine._process_model_outputs()`
+
+## ModelRunner modifications
+
+Generally speaking, `ModelRunner` and its subclasses consume the `SequenceGroupMetadata` instances constructed by the `Scheduler`. 
+
+For decoder-only models, `ModelRuner` utilizes this `seq_group_metadata_list` is utilized to
+* Construct the decoder input tokens/positions
+* Build the decoder self-attention slot-mappings data structure
+* Compute the decoder sequence lengths, token-counts, etc.
+* Construct an `AttentionMetadata` instance
+
+For encoder/decoder models, `EncoderDecoderModelRunner` prepares all of the same decoder-oriented model inputs, but additionally constructs
+* The encoder input tokens/positions
+* The encoder/decoder cross-attention slot-mappings data structure
+* The encoder sequence lengths, token-counts, etc.
+
+## Model `forward()` arguments & model architecture
+
+See the how-to guides for [encoder/decoder model `forward()` method arguments](https://github.com/afeldman-nm/vllm-enc-dec-rfc/blob/main/how-to.md#2-rewrite-the-forward-methods) and [suggested encoder/decoder model architecture](https://github.com/afeldman-nm/vllm-enc-dec-rfc/blob/main/how-to.md#25-optional-but-strongly-recommended-implement-the-following-encoderdecoder-model-architecture).
 
 ## Attention backend modifications
 
