@@ -229,13 +229,13 @@ attn(Q,K,V,A) = softmax(\frac{Q K^T + A}{\sqrt{d}})V
 $$
 
 
-Currently, vLLM does not support *arbitrary* $A$ matrices (this is the focus of the [custom attention bias](./rfc.md#support-custom-attention-bias) workstream.) However, all vLLM attention backends support explicit (XFormers via `AttentionBias` class) or implicit (Flash-attention, Flashinfer via the sequence start location argument) configuration of a block-diagonal attention mask in which all elements outside of the diagonal blocks are $-\infty$.
+Currently, vLLM does not support *arbitrary* $A$ matrices (this is the focus of the [custom attention bias](https://github.com/vllm-project/vllm/issues/7366#support-custom-attention-bias) workstream.) However, all vLLM attention backends support explicit (XFormers via `AttentionBias` class) or implicit (Flash-attention, Flashinfer via the sequence start location argument) configuration of a block-diagonal attention mask in which all elements outside of the diagonal blocks are $-\infty$.
 
 However, at time of writing, XFormers is the only backend in which the block-diagonal attention mask is configurable to support
 * Non-causal encoder attention/cross-attention
 * Causal decoder self-attention
 
-The other backends only support causal decoder self-attention (changing this is the one aspect of the [workstream to support encoder/decoder models in additional vLLM backends beyond xFormers](rfc.md#add-support-for-encoder-attention-and-cross-attention-to-additional-backends).)
+The other backends only support causal decoder self-attention (changing this is the one aspect of the [workstream to support encoder/decoder models in additional vLLM backends beyond xFormers](https://github.com/vllm-project/vllm/issues/7366#add-support-for-encoder-attention-and-cross-attention-to-additional-backends).)
 
 The SDP attention score computation $Q K^T$ yields an attention score matrix; the white regions outside of the diagonal blocks in Figure 2 reflect the portions of the attention score matrix corresponding to inter-sequence attention (which is we would like to omit from computation), while the diagonal blocks correspond to within- or intra-sequence attention (which belongs in the computation.) A block-diagonal attention mask $A$ prevents inter-sequence attention, provided that it is always equal to $-\infty$ in the inter-sequence regions of the SDP attention score matrix, as shown in Figure 2.
 
