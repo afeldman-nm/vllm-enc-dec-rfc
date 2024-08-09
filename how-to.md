@@ -20,7 +20,7 @@ Add a `.py` file for your model in `vllm/model_executor/models/`. The name of th
 
 Follow the instructions in the vLLM documentation.
 
-The encoder/decoder `forward()` method signature differs slightly from decoder-only. For example, the change in input parameters between the [HF BART `forward()` method signature](https://github.com/huggingface/transformers/blob/16ed0640be71cd38208eed87bdcf39be29a83b5d/src/transformers/models/bart/modeling_bart.py#L1604-L1621), and the vLLM BART `forward()` method signature is shown below:
+The encoder/decoder `forward()` method signature differs slightly from decoder-only. For example, the change in input parameters between the [HF BART `forward()` method signature](https://github.com/huggingface/transformers/blob/16ed0640be71cd38208eed87bdcf39be29a83b5d/src/transformers/models/bart/modeling_bart.py#L1604-L1621), and the [vLLM BART `forward()` method signature](https://github.com/vllm-project/vllm/blob/e90457674380f931bb95c0350af4ad83af568d72/vllm/model_executor/models/bart.py#L845-L854) is shown below:
 
 ```
      def forward(
