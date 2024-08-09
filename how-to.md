@@ -229,7 +229,7 @@ Note: for more context on the non-causal and causal attention masks described in
         ```
 
 * `<ModelName>CrossAttention`
-    * The QKV computation here is currently inefficient, for reasons described [later](#parallelizing-cross-attention-WQ-WK-WV-parameter-matrices). Addressing this is a near-term workstream.
+    * The QKV computation here is currently inefficient, for reasons described [later](https://github.com/afeldman-nm/vllm-enc-dec-rfc/blob/main/how-to.md#user-content-parallelizing-cross-attention-WQ-WK-WV-parameter-matrices). Addressing this is a near-term workstream.
     * Members
         * `qkv_proj`: $[W_Q W_K W_V]$ as `QKVParallelLinear` instance
         * `attn`: `Attention` instance
