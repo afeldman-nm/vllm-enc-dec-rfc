@@ -292,7 +292,7 @@ See the how-to guides for [encoder/decoder model `forward()` method arguments](h
 
 ## Attention backend modifications
 
-### Default encoder/decoder attention bias (or mask)
+### Default prefill-phase encoder/decoder attention bias (or mask)
 
 Two factors which complicate scaled dot-product (SDP) attention computation in the vLLM backend are:
 
@@ -306,11 +306,11 @@ $$
 attn(Q,K,V,A) = softmax(\frac{Q K^T + A}{\sqrt{d}})V
 $$
 
-The SDP attention score computation $Q K^T$ yields an attention score matrix; the white regions outside of the diagonal blocks in Figure 2 reflect the portions of the attention score matrix corresponding to inter-sequence attention (which is we would like to omit from computation), while the diagonal blocks correspond to within- or intra-sequence attention (which belongs in the computation.) A block-diagonal attention mask $A$ prevents inter-sequence attention, provided that it is always equal to $-\infty$ in the inter-sequence regions of the SDP attention score matrix, as shown in Figure 2.
+The SDP attention score computation $Q K^T$ yields an attention score matrix; the white regions outside of the diagonal blocks in Figure 2 reflect the portions of the attention score matrix corresponding to inter-sequence attention (which is we would like to omit from computation), while the diagonal blocks correspond to within- or intra-sequence attention (which belongs in the computation.) A block-diagonal attention mask $A$ prevents inter-sequence attention, provided that it is always equal to $-\infty$ in the inter-sequence regions of the SDP attention score matrix, as shown in Figure 2 for the prefill-phase.
 
 
 ---
-### *vLLM attention backend: block-diagonal masks for encoder, decoder self-, and encoder/decoder cross-attention*
+### *vLLM attention backend: prefill-phase block-diagonal masks for encoder, decoder self-, and encoder/decoder cross-attention*
 
 <figure>
   <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -320,18 +320,18 @@ The SDP attention score computation $Q K^T$ yields an attention score matrix; th
   </div>
   <figcaption style="text-align: center; margin-top: 10px;">
   <small>
-    <strong>Figure 2:</strong> Block-diagonal attention masks employed in the vLLM backend. Black regions correspond to intra-sequence attention in the SDP attention score matrix and would equal <em>0</em> in the attention mask. White regions correspond to inter-sequence attention in the SDP attention score matrix and would equal <em>-inf</em> in the attention mask. Left</em>: non-causal encoder attention for <em>N=4</em> concatenated sequences each with length <em>e_i</em> for <em>i</em> in <em>[0,N)</em>. <em>Middle</em>: causal decoder self-attention for <em>N=4</em> concatenated sequences each with length <em>d_i</em> for <em>i in [0,N)</em>. <em>Right</em>: non-causal encoder/decoder cross-attention between <em>N=4</em> decoder sequences each with length <em>d_i</em> for <em>i</em> in <em>[0,N)</em> and <em>N=4</em> encoder sequences each with length <em>e_i</em> for <em>i</em> in <em>[0,N)</em>.
+    <strong>Figure 2:</strong> Prefill-phase block-diagonal attention masks employed in the vLLM backend. Black regions correspond to intra-sequence attention in the SDP attention score matrix and would equal <em>0</em> in the attention mask. White regions correspond to inter-sequence attention in the SDP attention score matrix and would equal <em>-inf</em> in the attention mask. Left</em>: non-causal encoder attention for <em>N=4</em> concatenated sequences each with length <em>e_i</em> for <em>i</em> in <em>[0,N)</em>. <em>Middle</em>: causal decoder self-attention for <em>N=4</em> concatenated sequences each with length <em>d_i</em> for <em>i in [0,N)</em>. <em>Right</em>: non-causal encoder/decoder cross-attention between <em>N=4</em> decoder sequences each with length <em>d_i</em> for <em>i</em> in <em>[0,N)</em> and <em>N=4</em> encoder sequences each with length <em>e_i</em> for <em>i</em> in <em>[0,N)</em>.
     </small>
   </figcaption>
 </figure>
 
 ---
 
-The $i$-th block in the block-diagonal mask corresponds to the $i$-th sequence's attention matrix. For decoder self-attention, the default is for each block along the diagonal of the decoder self-attention mask to be causal ($0$ in the lower-triangle and $-\infty$ above ) (Figure 2, *middle*.) For encoder and encoder/decoder cross-attention, the default is for each diagonal block in the attention mask to be non-causal (entirely $0$) (Figure 2, *left* and *right*.)
+The $i$-th block in the prefill block-diagonal mask corresponds to the $i$-th sequence's attention matrix. For prefill-phase decoder self-attention, the default is for each block along the diagonal of the decoder self-attention mask to be causal ($0$ in the lower-triangle and $-\infty$ above ) (Figure 2, *middle*.) For prefill-phase encoder and encoder/decoder cross-attention, the default is for each diagonal block in the attention mask to be non-causal (entirely $0$) (Figure 2, *left* and *right*.)
 
-Note the rectangular shape of the diagonal blocks in the cross-attention mask, as compared to the square blocks in the encoder and decoder self-attention masks. In encoder attention and decoder self-attention, Q and K are derived from the same source (previous encoder or decoder layer output, respectively) and thus have the same length; therefore, the regions of the SDP attention score matrix corresponding to intra-sequence attention will always be square. In contrast, cross-attention Q is derived from the decoder self-attention hidden states while K is derived from the encoder output hidden states. Since the encoder and decoder have different input prompts, Q and K may differ in length for cross-attention, which is why the diagonal blocks are rectangular.
+Note the rectangular shape of the diagonal blocks in the prefill cross-attention mask, as compared to the square blocks in the encoder and decoder self-attention masks. In encoder attention and decoder self-attention, Q and K are derived from the same source (previous encoder or decoder layer output, respectively) and thus have the same length during prefill; therefore, the regions of the SDP attention score matrix corresponding to intra-sequence attention will always be square during prefill. In contrast, cross-attention Q is derived from the decoder self-attention hidden states while K is derived from the encoder output hidden states. Since the encoder and decoder have different input prompts during prefill, Q and K may differ in length for cross-attention, which is why the diagonal blocks are rectangular during prefill.
 
-### Attention mask implementation considerations
+### Implementation considerations for prefill attention mask
 
 Currently, vLLM does not support passing *arbitrary fully-materialized* $A$ matrices into the attention backends (this is the focus of the [custom attention bias](https://github.com/vllm-project/vllm/issues/7366#support-custom-attention-bias) workstream); instead the attention mask is represented in a compact & non-materialized fashion.
 
@@ -343,4 +343,12 @@ The vLLM Flashinfer backend also does not currently support encoder attention or
 
 Note that adding encoder/decoder support to backends other than XFormers is [a workstream in the encoder/decoder RFC](https://github.com/vllm-project/vllm/issues/7366#add-support-for-encoder-attention-and-cross-attention-to-additional-backends).
 
-[^1]: [Whisper](https://cdn.openai.com/papers/whisper.pdf) is a multi-modal encoder/decoder speech-recognition model.
+### Absence of decode-phase attention masks
+
+vLLM does not construct any kind of attention bias for decode-phase paged attention. 
+
+The paged attention kernels avoid computing inter-sequence attention by design, so this does not need to be enforced by a block-diagonal mask.
+
+There is no need to impose a causal or non-causal attention mask on the paged attention, because the natural behavior of paged attention is to have the query attend to all KVs in the context. This suffices for both decode-phase decoder self-attention (where the context is past decoded tokens) and decode-phase encoder/decoder cross-attention (where the context is the static set of encoder tokens.)
+
+However, [once custom attention bias is supported](https://github.com/vllm-project/vllm/issues/7366#user-content-support-custom-attention-bias), an explicit decode-phase attention mask will be required, the reason being that custom attention bias allows the attention between the query vector and the preceding KVs to be weighted non-uniformly.
