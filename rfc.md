@@ -12,7 +12,7 @@ There is significant interest in vLLM supporting encoder/decoder models. [Issues
 
 These three PRs make encoder/decoder model inference possible; however, they leave more to be desired in terms of (1) parity between vLLM's decoder-only & encoder/decoder request processing pipelines, in terms of which features are supported, and (2) the number of encoder/decoder models which are supported.
 
-The ask for the vLLM community is to contribute PRs which help bring vLLM encoder/decoder model support to a similar level of maturity as that of decoder-only models.
+The ask for the vLLM community is to contribute PRs which help bring vLLM encoder/decoder functionality to a similar level of maturity as that of vLLM's decoder-only functionality.
 
 ## Proposed changes
 
