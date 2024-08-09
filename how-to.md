@@ -1,5 +1,7 @@
 # How to add a new encoder/decoder model
 
+**Note:** these guidelines were written for vLLM 0.5.4
+
 First, review the vLLM project [guidelines](https://docs.vllm.ai/en/latest/models/adding_model.html) for adding a new decoder-only model.
 
 Each section heading below links to a corresponding section on the vLLM "Adding a new model" webpage, and (with a few exceptions) the section body text discusses only the unique considerations for adding encoder/decoder models.
