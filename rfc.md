@@ -110,9 +110,9 @@ This RFC gives an overview of those features & models which **will not be compat
 
 ## Background
 
-Before continuing, it will be helpful to review [the details of the new vLLM encoder/decoder infrastructure](infra-enc-dec.md). 
+Before continuing, it will be helpful to review [the details of the new vLLM encoder/decoder infrastructure](https://github.com/afeldman-nm/vllm-enc-dec-rfc/blob/main/infra-enc-dec.md). 
 
-It will also be helpful to review [this how-to guide](how-to.md) for adding new encoder/decoder models & improving encoder/decoder feature compatibility.
+It will also be helpful to review [this how-to guide](https://github.com/afeldman-nm/vllm-enc-dec-rfc/blob/main/how-to.md) for adding new encoder/decoder models & improving encoder/decoder feature compatibility.
 
 ## Initial goal
 
@@ -154,8 +154,8 @@ Proposal: it makes sense to implement encoder/decoder multimodality in the same 
 #### Proposed multimodal encoder/decoder prompt formats
 
 It may be helpful to review
-* [The non-multimodal encoder/decoder prompt formats which are currently supported by vLLM](infra-enc-dec.md#supported-encoderdecoder-prompt-formats).
-* [The encoder/decoder prompt formats currently supported by vLLM.](infra-enc-dec.md#supported-encoderdecoder-prompt-formats)
+* [The non-multimodal encoder/decoder prompt formats which are currently supported by vLLM](https://github.com/afeldman-nm/vllm-enc-dec-rfc/blob/main/infra-enc-dec.md#supported-encoderdecoder-prompt-formats).
+* [The encoder/decoder prompt formats currently supported by vLLM.](https://github.com/afeldman-nm/vllm-enc-dec-rfc/blob/main/infra-enc-dec.md#supported-encoderdecoder-prompt-formats)
 
 Generally speaking, in encoder/decoder models based on cross-attention, the non-text input modality is passed to the encoder as input. Conversely, any text prompt is typically passed to the decoder as a input prompt.
 
@@ -207,7 +207,7 @@ It may also be worth considering whether or how to support
 
 ### Add new models to vLLM
 
-Please review the [how-to guide for adding new models to vLLM](how-to.md#guide-to-adding-new-encoderdecoder-models-to-vllm)
+Please review the [how-to guide for adding new models to vLLM](https://github.com/afeldman-nm/vllm-enc-dec-rfc/blob/main/how-to.md#guide-to-adding-new-encoderdecoder-models-to-vllm)
 
 See `tests/models/test_bart.py` for an example of an encoder/decoder model unit test. See `tests/distributed/test_basic_distributed_correctness_enc_dec.py` for an example of an encoder/decoder model test with TP > 1.
 
@@ -272,7 +272,7 @@ Here the following two approaches for supporting custom attention bias in vLLM a
 
     <figure>
       <p float="center">
-        <img src="img/flexattention.png" alt="FlexAttention with scoremod()" width="100%" style="margin-right:10px;" />
+        <img src="https://github.com/afeldman-nm/vllm-enc-dec-rfc/blob/main/img/flexattention.png" alt="FlexAttention with scoremod()" width="100%" style="margin-right:10px;" />
       </p>
       <figcaption style="text-align: center; margin-top: 10px;">
         <small>
@@ -318,7 +318,7 @@ Steps to support pipeline-parallelism with encoder/decoder models:
 
 #### Low-hanging fruit: improve efficiency of the parallel cross-attention QKV computation
 
-Cross-attention complicates the parallel GEMM computations against the $W_Q$, $W_K$, $W_V$ parameter matrices: `QKVParallelLinear.forward()` is inherited from `ColumnParallelLinear.forward(input_)`, which takes only a single `input_` argument; however, [Figure 1 of the encoder/decoder architecture overview](infra-enc-dec.md#encoderdecoder-architecture-diagram-prefill--and-decode-phase) shows that cross-attention $W_Q$ operates on the prior self-attention output while $W_K$ and $W_V$ operate on the encoder hidden states. Furthermore, note that $W_K$ and $W_V$ are never utilized during decode because the encoder sequence is static; thus, cross-attention layers utilize all three matrices during prefill, but only $W_Q$ during decode.
+Cross-attention complicates the parallel GEMM computations against the $W_Q$, $W_K$, $W_V$ parameter matrices: `QKVParallelLinear.forward()` is inherited from `ColumnParallelLinear.forward(input_)`, which takes only a single `input_` argument; however, [Figure 1 of the encoder/decoder architecture overview](https://github.com/afeldman-nm/vllm-enc-dec-rfc/blob/main/infra-enc-dec.md#encoderdecoder-architecture-diagram-prefill--and-decode-phase) shows that cross-attention $W_Q$ operates on the prior self-attention output while $W_K$ and $W_V$ operate on the encoder hidden states. Furthermore, note that $W_K$ and $W_V$ are never utilized during decode because the encoder sequence is static; thus, cross-attention layers utilize all three matrices during prefill, but only $W_Q$ during decode.
 
 For the time being, BART utilizes [the following workaround](https://github.com/vllm-project/vllm/blob/21b9c49aa37c7ba08590a99b0d4f15f86439c8f9/vllm/model_executor/models/bart.py#L359-L365):
 
