@@ -37,9 +37,9 @@ The following sections will add more detail. It may be helpful to review [the of
 
 ## 1. Issuing a request to vLLM
 
-For decoder-only models, a vLLM request specifies a single text or tokens prompt (and possibly multimodal data.)
+For decoder-only models, a vLLM request specifies a single text or tokens prompt, and possibly multimodal data.
 
-An encoder decoder model is architecturally capable of accepting two prompts.
+An encoder decoder model is architecturally capable of accepting two prompts, and currently vLLM does not support multimodal input for encoder/decoder models.
 
 However, taking HF transformers as an example, it is also normal for encoder/decoder models to be invoked by passing in only a single prompt. In these cases, the input to `model.generate()` is typically passed to the encoder. The reason is that the encoder input is usually the "primary" input reflecting the purpose the model was designed for, whereas the decoder input - if specified by the user at all - is for tuning model behavior. For example:
 
