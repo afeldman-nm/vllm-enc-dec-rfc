@@ -325,6 +325,6 @@ As an example, the [vLLM BART model integration may be found here](https://githu
 
 ## Final note: feature dependencies
 
-Most of the [encoder/decoder feature support TODOs](rfc.md) do not prevent specific models from being added to vLLM. However some models depend on other vLLM encoder/decoder workstreams:
+Some encoder/decoder models depend on other vLLM encoder/decoder workstreams:
 * Multimodal encoder/decoder models with cross-attention, such as [Whisper](rfc.md#add-whisper-model), depend on [vLLM support for multimodal encoder/decoder models](rfc.md#support-encoderdecoder-multimodality).
 * Models which rely on custom attention bias - as is the case for T5 - depend on [vLLM support for custom attention bias](rfc.md#support-custom-attention-bias).
