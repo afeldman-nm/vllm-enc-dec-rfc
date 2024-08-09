@@ -229,7 +229,7 @@ Note: for more context on the non-causal and causal attention masks described in
         ```
 
 * `<ModelName>CrossAttention`
-    * The QKV computation here is currently inefficient, for reasons described [later](https://github.com/afeldman-nm/vllm-enc-dec-rfc/blob/main/how-to.md#parallelizing-cross-attention-W_Q-W_K-W_V-parameter-matrices). Addressing this is a near-term workstream.
+    * The QKV computation here is currently inefficient, for reasons described [later](#parallelizing-cross-attention-WQ-WK-WV-parameter-matrices). Addressing this is a near-term workstream.
     * Members
         * `qkv_proj`: $[W_Q W_K W_V]$ as `QKVParallelLinear` instance
         * `attn`: `Attention` instance
@@ -265,7 +265,7 @@ Follow the instructions in the vLLM documentation.
 
 Recall that vLLM parallelizes QKV computation & `Attention.forward()` along the head-index dimension (i.e. per-head computations are distributed among GPUs.) Review the `__init__()` code in `BartEncoderAttention`, `BartDecoderSelfAttention`, and `BartCrossAttention` for guidance on how to use `tp_world_size` to compute the size of the attention computation (`num_heads`, `num_kv_heads`, etc.) on a single GPU.
 
-### Parallelizing cross-attention $W_Q$ $W_K$ $W_V$ parameter matrices <a href="#user-content-parallelizing-cross-attention-W_Q-W_K-W_V-parameter-matrices" id="parallelizing-cross-attention-W_Q-W_K-W_V-parameter-matrices">#</a>
+### Parallelizing cross-attention $W_Q$ $W_K$ $W_V$ parameter matrices <a href="#user-content-parallelizing-cross-attention-WQ-WK-WV-parameter-matrices" id="parallelizing-cross-attention-WQ-WK-WV-parameter-matrices">#</a>
 
 Cross-attention complicates the parallel GEMM computations against the $W_Q$, $W_K$, $W_V$ parameter matrices, because the Q/K/V computation must operate on both the previous-layer decoder hidden states and also encoder output hidden states; however, `QKVParallelLinear.forward()` is designed to operate on only a single input.
 
