@@ -182,6 +182,8 @@ This summary is at a high level of abstraction, so details like normalization, r
 
 ### Wrapper classes for QKV computation + attention backend invocation
 
+Note: for more context on the non-causal and causal attention masks described in this section, [review the default encoder/decoder attention masks](infra-enc-dec.md#default-encoderdecoder-attention-bias-or-mask).
+
 * `<ModelName>EncoderAttention`
     * Members
         * `qkv_proj`: $[W_Q W_K W_V]$ as `QKVParallelLinear` instance
