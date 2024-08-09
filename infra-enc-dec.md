@@ -306,15 +306,6 @@ $$
 attn(Q,K,V,A) = softmax(\frac{Q K^T + A}{\sqrt{d}})V
 $$
 
-
-Currently, vLLM does not support passing *arbitrary fully-materialized* $A$ matrices into the attention backends (this is the focus of the [custom attention bias](https://github.com/vllm-project/vllm/issues/7366#support-custom-attention-bias) workstream.) However, all vLLM attention backends support explicit (XFormers via `AttentionBias` class) or implicit (Flash-attention, Flashinfer via the sequence start location argument) configuration of a block-diagonal attention mask in which all elements outside of the diagonal blocks are $-\infty$.
-
-However, at time of writing, XFormers is the only backend in which the block-diagonal attention mask is configurable to support
-* Non-causal encoder attention/cross-attention
-* Causal decoder self-attention
-
-The other backends only support causal decoder self-attention (changing this is the one aspect of the [workstream to support encoder/decoder models in additional vLLM backends beyond xFormers](https://github.com/vllm-project/vllm/issues/7366#add-support-for-encoder-attention-and-cross-attention-to-additional-backends).)
-
 The SDP attention score computation $Q K^T$ yields an attention score matrix; the white regions outside of the diagonal blocks in Figure 2 reflect the portions of the attention score matrix corresponding to inter-sequence attention (which is we would like to omit from computation), while the diagonal blocks correspond to within- or intra-sequence attention (which belongs in the computation.) A block-diagonal attention mask $A$ prevents inter-sequence attention, provided that it is always equal to $-\infty$ in the inter-sequence regions of the SDP attention score matrix, as shown in Figure 2.
 
 
@@ -339,5 +330,17 @@ The SDP attention score computation $Q K^T$ yields an attention score matrix; th
 The $i$-th block in the block-diagonal mask corresponds to the $i$-th sequence's attention matrix. Since causality is the default for decoder self-attention, the default is for each block along the diagonal of the decoder self-attention mask to have $-\infty$ in the upper-triangle and $0$ in the lower triangle (Figure 2, *middle*.) Non-causality is the default for encoder and encoder/decoder cross-attention, so the default is for each diagonal block in the encoder or cross-attention mask to be entirely $0$ (Figure 2, *left* and *right*.)
 
 Note the rectangular shape of the diagonal blocks in the cross-attention mask, as compared to the square blocks in the encoder and decoder self-attention masks. In encoder attention and decoder self-attention, Q and K are derived from the same source (previous encoder or decoder layer output, respectively) and thus have the same length; therefore, the regions of the SDP attention score matrix corresponding to intra-sequence attention will always be square. In contrast, cross-attention Q is derived from the decoder self-attention hidden state output while K is derived from the encoder hidden states. Since the encoder and decoder have different input prompts, Q and K may differ in length for cross-attention, which is why the diagonal blocks are rectangular.
+
+### Attention mask implementation considerations
+
+Currently, vLLM does not support passing *arbitrary fully-materialized* $A$ matrices into the attention backends (this is the focus of the [custom attention bias](https://github.com/vllm-project/vllm/issues/7366#support-custom-attention-bias) workstream); instead the attention mask is represented in a compact & non-materialized fashion.
+
+More specifically, the vLLM XFormers attention backend internally constructs instances of `BlockDiagonalMask` or `BlockDiagonalCausalMask` and passes them to the XFormers kernels. `BlockDiagonalMask` is utilized when `Attention.forward()` is invoked with `attn_type=AttentionType.ENCODER` or `attn_type=AttentionType.ENCODER_DECODER`. `BlockDiagonalCausalMask` is utilized when `Attention.forward()` is invoked with `attn_type=AttentionType.DECODER`.
+
+The vLLM flash-attention backend does not currently support encoder attention or encoder/decoder cross-attention; however, a logical approach would be to configure block-diagonal mask shape using `FlashAttentionMetadata.query_start_loc` and `FlashAttentionMetadata.seq_start_loc`, and causality using the flash-attention kernel's `causal=True/False` flag.
+
+The vLLM Flashinfer backend also does not currently support encoder attention or encoder/decoder cross-attention; however a similar approach based on `query_start_loc`/`seq_start_loc`/`causal` flag should work
+
+Note that adding encoder/decoder support to backends other than XFormers is [a workstream in the encoder/decoder RFC](https://github.com/vllm-project/vllm/issues/7366#add-support-for-encoder-attention-and-cross-attention-to-additional-backends).
 
 [^1]: [Whisper](https://cdn.openai.com/papers/whisper.pdf) is a multi-modal encoder/decoder speech-recognition model.
