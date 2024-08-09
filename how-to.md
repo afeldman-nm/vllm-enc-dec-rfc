@@ -273,7 +273,7 @@ If the default behavior is not appropriate for your model, you add special cases
 
 By default, `LLMEngine._prepare_decoder_input_ids_for_generation(decoder_input_ids)` will prepend `<DEC>` (decoder start token) to the beginning of the decoder prompt token list. However if the decoder prompt token list already begins with `<DEC>` then nothing is changed.
 
-If this behavior is not appropriate for your model, you can modify [`LLMEngine._prepare_decoder_input_ids_for_generation(decoder_input_ids)`](https://github.com/vllm-project/vllm/blob/70d268a39947a8ea950f871f9345aad21f09715e/vllm/engine/llm_engine.py#L626) in order to implement the appropriate decoder prompt preprocessing for your model.
+If this behavior is not appropriate for your model, you can add a special case to [`LLMEngine._prepare_decoder_input_ids_for_generation(decoder_input_ids)`](https://github.com/vllm-project/vllm/blob/70d268a39947a8ea950f871f9345aad21f09715e/vllm/engine/llm_engine.py#L626) in order to implement the correct behavior for your model.
 
 ### Default decoder prompt
 
@@ -284,7 +284,7 @@ Here is how the default decoder prompt is implemented:
 * Next, `LLMEngine._prepare_decoder_input_ids_for_generation(decoder_input_ids)` detects that `<DEC>` is absent from the decoder prompt & prepends `<DEC>`
 * This results in `<DEC><BOS>`
 
-You can modify the default decoder prompt my modifying [`LLMEngine._get_default_enc_dec_decoder_prompt()`](https://github.com/vllm-project/vllm/blob/70d268a39947a8ea950f871f9345aad21f09715e/vllm/engine/llm_engine.py#L752) and [`LLMEngine._prepare_decoder_input_ids_for_generation(decoder_input_ids)`](https://github.com/vllm-project/vllm/blob/70d268a39947a8ea950f871f9345aad21f09715e/vllm/engine/llm_engine.py#L626).
+If the current vLLM default decoder prompt is not appropriate for your model, you add a special case to [`LLMEngine._get_default_enc_dec_decoder_prompt()`](https://github.com/vllm-project/vllm/blob/70d268a39947a8ea950f871f9345aad21f09715e/vllm/engine/llm_engine.py#L752) and [`LLMEngine._prepare_decoder_input_ids_for_generation(decoder_input_ids)`](https://github.com/vllm-project/vllm/blob/70d268a39947a8ea950f871f9345aad21f09715e/vllm/engine/llm_engine.py#L626) in order to implement the correct behavior for your model.
 
 ## 3. [(Optional but strongly recommended) Implement tensor parallelism and quantization support](https://docs.vllm.ai/en/latest/models/adding_model.html#optional-implement-tensor-parallelism-and-quantization-support)
 
