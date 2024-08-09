@@ -230,7 +230,7 @@ Steps to add support for Whisper [^1], a multimodal encoder/decoder speech recog
 * Modify each Whisper layer, where appropriate, to support TP > 1
 * Add a Whisper test under `tests/models/`
 
-Proposal: it makes sense to implement encoder/decoder multimodality, audio support, and Whisper in the same PR; that way, the Whisper model may be used to facilitate an end-to-end test with of audio multimodality.
+Proposal: consider whether or not it makes sense to implement encoder/decoder multimodality, audio support, and Whisper in the same PR; that way, the Whisper model may be used to facilitate an end-to-end test with of audio multimodality.
 
 #### Add T5 model
 
