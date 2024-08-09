@@ -106,7 +106,7 @@ This section proposes a general encoder/decoder model architecture, starting wit
 
 ### `<ModelName>Encoder` and `<ModelName>Decoder`: encoder and decoder modules
 
-* The encoder and decoder have generally similar structures, although specific models may differentiate them in subtle ways. However, one difference is that the decoder consumes encoder output hidden states & passes them into each decoder layer.
+* The encoder and decoder have generally similar structures, although specific models may differentiate them in subtle ways. However, one difference is that in addition to consuming decoder input tokens/positions, the decoder also consumes encoder output hidden states & passes them into each decoder layer.
 * Members
     * `cache_config`
     * `quant_config`
