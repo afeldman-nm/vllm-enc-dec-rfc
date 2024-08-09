@@ -321,7 +321,7 @@ Out-of-tree model integration has not been tested with encoder/decoder models.
 
 ## Example: add BART model
 
-As an example, the [vLLM BART model integration may be found here](https://github.com/vllm-project/vllm/blob/21b9c49aa37c7ba08590a99b0d4f15f86439c8f9/vllm/model_executor/models/bart.py).
+As an example, the [latest vLLM BART model integration may be found here](https://github.com/vllm-project/vllm/blob/main/vllm/model_executor/models/bart.py).
 
 ## Final note: feature dependencies
 
