@@ -220,38 +220,38 @@ The block manager contains two internal block table representations
   * Allocation yields a block table for the cross-attention KV cache & one block table for each self-attention KV cache
   * **Total # of blocks:**
 
-    $$(seq\ group\ blocks) = |cross\; attn\; blocktable| + \sum_{i}^{num\; seqs}{|seq_{i}\; decoder\; self\; attn\; block\; table|}$$
+    $$(seq\ group\ blocks) = |cross\ attn\ blocktable| + \sum_{i}^{num\ seqs}{|seq_{i}\ decoder\ self\ attn\ block\ table|}$$
   * After allocation,
 
-    $$(free\; gpu\; blocks\; after\; alloc) = (free\; gpu\; blocks) - (seq\; group\; blocks)$$
+    $$(free\ gpu\ blocks\ after\ alloc) = (free\ gpu\ blocks) - (seq\ group\ blocks)$$
 
 #### Swap
 
 * `block_man.swap_out(seq_group)` accomplishes GPU -> CPU swap for a `SequenceGroup`'s KV caches.
   * After swap,
 
-    $$(free\; gpu\; blocks\; after\; swap\; out) = (free\; gpu\; blocks) + (seq\; group\; blocks)$$
-    $$(free\; cpu\; blocks\; after\; swap\; out) = (free\; cpu\; blocks) - (seq\; group\; blocks)$$
+    $$(free\ gpu\ blocks\ after\ swap\ out) = (free\ gpu\ blocks) + (seq\ group\ blocks)$$
+    $$(free\ cpu\ blocks\ after\ swap\ out) = (free\ cpu\ blocks) - (seq\ group\ blocks)$$
 
 * `block_man.swap_in(seq_group)` accomplishes CPU -> GPU swap for a `SequenceGroup`'s KV caches.
   * After swap,
 
-    $$(free\; gpu\; blocks\; after\; swap\; in) = (free\; gpu\; blocks) - (seq\; group\; blocks)$$
-    $$(free\; cpu\; blocks\; after\; swap\; in) = (free\; cpu\; blocks) + (seq\; group\; blocks)$$
+    $$(free\ gpu\ blocks\ after\ swap\ in) = (free\ gpu\ blocks) - (seq\ group\ blocks)$$
+    $$(free\ cpu\ blocks\ after\ swap\ in) = (free\ cpu\ blocks) + (seq\ group\ blocks)$$
 
 #### Free
 
 * `block_man.free(seq)` frees the self-attention KV cache blocks associated with the `Sequence` argument passed in.
   * After `free()`,
   
-    $$free\; device\; blocks\; after\; free = free\; device\; blocks\ + |seq_{i}\; decoder\; self\; attn\; block\; table|$$
+    $$free\ device\ blocks\ after\ free = free\ device\ blocks\ + |seq_{i}\ decoder\ self\ attn\ block\ table|$$
 
     where $device$ is whichever of $\{CPU,GPU\}$ the `SequenceGroup` currently resides in, and $i$ is the `Sequence` id
 
 * `block_man.free_cross(seq_group)` frees the cross-attention KV cache blocks associated with the `SequenceGroup` argument passed in.
   * After `free_cross()`,
 
-    $$free\; device\; blocks\; after\; free\_cross = free\; device\; blocks\ + |cross\; attn\; blocktable|$$
+    $$free\ device\ blocks\ after\ free\_cross = free\ device\ blocks\ + |cross\ attn\ blocktable|$$
 
     where $device$ is whichever of $\{CPU,GPU\}$ the `SequenceGroup` currently resides in.
 
